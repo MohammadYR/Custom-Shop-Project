@@ -1,5 +1,5 @@
 """
-URL configuration for core project.
+URL configuration for config project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.2/topics/http/urls/
@@ -18,10 +18,22 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from rest_framework.routers import DefaultRouter
 
+# from catalog.views import ProductViewSet
+# from marketplace.views import StoreItemViewSet
+# from sales.views import CartViewSet, OrderViewSet
+
+
+# router = DefaultRouter()
+# router.register(r"products", ProductViewSet)
+# router.register(r"store-items", StoreItemViewSet)
+# router.register(r"carts", CartViewSet)
+# router.register(r"orders", OrderViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # path("api/", include(router.urls)),
     path("api/accounts/", include("accounts.urls")),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

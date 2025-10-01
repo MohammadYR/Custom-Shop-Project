@@ -39,6 +39,6 @@ class RegisterView(generics.CreateAPIView):
 class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
 
-@extend_schema(tags=["Auth"], summary="رفرش توکن")
+@extend_schema(tags=["Auth"], summary="Refresh token")
 class RefreshView(TokenRefreshView):
     pass

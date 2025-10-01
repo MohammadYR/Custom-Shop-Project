@@ -3,6 +3,7 @@ from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import User, Address
 
 User = get_user_model()
 
@@ -44,9 +45,24 @@ class LoginSerializer(TokenObtainPairSerializer):
                 | Q(email__iexact=identifier)
                 | Q(phone_number=identifier)
             )
+
         except User.DoesNotExist:
-            raise serializers.ValidationError({"detail": "کاربر پیدا نشد."})
+            raise serializers.ValidationError({"detail": "کاربر پیدا نشد.".encode("utf-8")})
 
         attrs["username"] = user.username
         attrs["password"] = password
         return super().validate(attrs)
+
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ("id","line1","city","postal_code","is_default","purpose")
+
+
+class UserSerializer(serializers.ModelSerializer):
+    addresses = AddressSerializer(many=True, read_only=True)
+    class Meta:
+        model = User
+        fields = ("id","username","email","phone_number","addresses")
