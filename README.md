@@ -1,45 +1,36 @@
-# Maktab130 Custom Shop Backend (Django + DRF)
-# Multi-Vendor E-commerce
+# Maktab130 Custom Shop Backend
 
-مارکت‌پلیس مینیمال بر پایه Django/DRF برای پروژه مکتب ۱۳۰. این ریپو اسکلت اپ‌ها، مدل‌های اصلی، و جریان Checkout → Order → Payment (ماک) را فراهم می‌کند.
+A multi-vendor e-commerce API built with Django 5.2 and Django REST Framework. The service powers store management, product catalogs, carts, orders, and payment tracking for the Bootcamp final project.
 
+## Highlights
+- Multi-tenant marketplace: sellers register stores, publish inventory, and manage availability.
+- Rich catalog: hierarchical categories, product metadata (`attrs`), and media galleries.
+- Checkout pipeline: persistent carts, order snapshots with price history, and hooks for shipping/discount logic.
+- Payments ledger: `Payment` and `Transaction` models capture PSP callbacks, verification, and auditing.
+- Account system: custom `User`, profile data, address book, JWT auth (username/email/phone), and OTP scaffolding.
+- Production ready foundation: soft-delete base model, Celery + Redis integration, CORS support, and interactive OpenAPI docs.
 
-## معماری خلاصه
-- با اپ‌های: `core`, `accounts`, `catalog`, `marketplace`, `sales`, `payments` , `reviews`.
-- تمام مدل‌های دامنه‌ای از `core.BaseModel` ارث می‌برند (timestamps + soft delete).
-- مدل کلیدی مارکت‌پلیس: `StoreItem (store, product, price, stock)` با یکتایی `(store, product)`.
-- Snapshot قیمت/عنوان در `OrderItem` جهت ثبات سفارش‌های گذشته.
+## Repository Structure
+- `config/` – Django settings, URL routing, ASGI/WSGI entry points, Celery app.
+- `core/` – Project-wide abstractions: `BaseModel`, soft-delete managers, shared mixins.
+- `accounts/` – Auth endpoints, serializers, custom user model, profiles, addresses, OTP model.
+- `catalog/` – Category tree, product definitions, product images, flexible product attributes.
+- `marketplace/` – Store and store inventory (`StoreItem`) with SKU support and uniqueness constraints.
+- `sales/` – Cart/order domain models, services for checkout, serializers/tests scaffolding.
+- `payments/` – Payment records and transaction log ready for PSP integration.
+- `reviews/` – Placeholder app for future customer feedback features.
 
+## Tech Stack
+- Python 3.11 · Django 5.2 · Django REST Framework 3.16
+- Simple JWT for stateless auth, drf-spectacular for API schema/UI
+- Celery 5.5 with Redis broker/result backend
+- SQLite (default) or PostgreSQL 14+ (recommended)
+- Optional admin UI at `/admin/`
 
-## پیش‌نیازها
-- Python 3.11+
-- Postgres 14+ (لوکال یا Docker)
-- Pip + Virtualenv
+## Getting Started
 
-## 🚀 Getting Started
-
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
-
-## راه‌اندازی سریع
-```bash
-# 1) ساخت و فعال‌سازی محیط مجازی
-python -m venv .venv && source .venv/bin/activate
-
-
-# 2) نصب وابستگی‌ها
-make install # یا: pip install -r requirements.txt
-
-
-# 3) تنظیمات محیطی (نمونه)
-cp .env.example .env
-# مقادیر را ویرایش کنید (DB/Secret)
-
-
-# 4) مایگریشن و کاربر ادمین
-make migrate
-make createsuperuser
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/MohammadYR/Bootcamp-Final-Project.git
 
 
-# 5) اجرای سرور توسعه
-make run
-# پنل ادمین: http://127.0.0.1:8000/admin/

@@ -22,7 +22,7 @@ def create_order_from_cart(*, cart, user, shipping_address):
     for ci in cart.items.select_related("store_item","store_item__product"):
         price = ci.store_item.price
         title = ci.store_item.product.title
-        OrderItem.objects.create(order=order, store_item=ci.store_item, quantity=ci.qty,
+        OrderItem.objects.create(order=order, store_item=ci.store_item, quantity=ci.quantity,
         price_at_purchase=price, title_snapshot=title)
         subtotal += price * ci.quantity
     order.subtotal = subtotal

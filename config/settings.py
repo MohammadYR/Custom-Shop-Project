@@ -43,6 +43,14 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'rest_framework_simplejwt',
     'accounts',
+    'marketplace',
+    'catalog',
+    'sales',
+    'payments',
+    'reviews',
+    'core',
+    'rest_framework.authtoken',
+    'rest_framework_simplejwt.token_blacklist',
 
 ]
 
@@ -91,6 +99,16 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": "maktab_shop",
+#         "USER": "maktab_user",
+#         "PASSWORD": "StrongPass!",
+#         "HOST": "127.0.0.1",
+#         "PORT": "5432",
+#     }
+# }
 
 
 # Password validation
@@ -158,20 +176,19 @@ SIMPLE_JWT = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Maktab 130 â€“ Custom Shop Backend",
+    "TITLE": "Maktab130 Custom Shop Backend",
     "DESCRIPTION": (
-        "Ø³Ø±ÙˆÛŒØ³ Ø¨Ú©â€ŒØ§Ù†Ø¯ ÙØ±ÙˆØ´Ú¯Ø§Ù‡ÛŒ Ú†Ù†Ø¯ÙØ±ÙˆØ´Ù†Ø¯Ù‡.\n"
-        "Ø´Ø§Ù…Ù„ Ø§Ø­Ø±Ø§Ø² Ù‡ÙˆÛŒØª (JWT/OTP)ØŒ Ù¾Ø±ÙˆÙØ§ÛŒÙ„/Ø¢Ø¯Ø±Ø³ØŒ ÙØ±ÙˆØ´Ù†Ø¯Ù‡/ÙØ±ÙˆØ´Ú¯Ø§Ù‡ØŒ "
-        "Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ/Ù…Ø­ØµÙˆÙ„ØŒ Ø³Ø¨Ø¯ Ø®Ø±ÛŒØ¯/Ø³ÙØ§Ø±Ø´ØŒ Ù¾Ø±Ø¯Ø§Ø®ØªØŒ Ùˆ Ù¾Ù†Ù„ Ø§Ø¯Ù…ÛŒÙ†."
+        "Multi-vendor commerce backend for the Maktab 130 bootcamp project.\n"
+        "Features include JWT/OTP authentication, user profiles and addresses, "
+        "seller/store management, product catalog, cart & order workflow, and payment tracking."
     ),
     "VERSION": "1.0.0",
-
     "SERVERS": [
         {"url": "http://127.0.0.1:8000", "description": "Local"},
     ],
-
-    "COMPONENT_SPLIT_REQUEST": True,
     "SCHEMA_PATH_PREFIX": r"/api",
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SORT_OPERATIONS": True,
     "SECURITY": [{"BearerAuth": []}],
     "COMPONENTS": {
         "securitySchemes": {
@@ -182,21 +199,22 @@ SPECTACULAR_SETTINGS = {
             }
         }
     },
-
-    "SORT_OPERATIONS": True,
     "SWAGGER_UI_SETTINGS": {
-        "persistAuthorization": True,   # ØªÙˆÚ©Ù† Ø¨Ø¹Ø¯ Ø±ÙØ±Ø´ ØµÙØ­Ù‡ Ù‡Ù… Ù…ÛŒâ€ŒÙ…Ø§Ù†Ø¯
+        "persistAuthorization": True,
         "displayRequestDuration": True,
+        "filter": True,  # enable right-hand-side filter to quickly find endpoints
     },
-
     "TAGS": [
-        {"name": "Auth", "description": "Ø«Ø¨Øªâ€ŒÙ†Ø§Ù…ØŒ ÙˆØ±ÙˆØ¯ØŒ Ø±ÙØ±Ø´ØŒ OTP"},
-        {"name": "Profile", "description": "Ù¾Ø±ÙˆÙØ§ÛŒÙ„ Ùˆ Ø¢Ø¯Ø±Ø³â€ŒÙ‡Ø§ÛŒ Ú©Ø§Ø±Ø¨Ø±"},
-        {"name": "Store", "description": "Ø«Ø¨Øªâ€ŒÙ†Ø§Ù… ÙØ±ÙˆØ´Ù†Ø¯Ù‡ Ùˆ Ù…Ø¯ÛŒØ±ÛŒØª ÙØ±ÙˆØ´Ú¯Ø§Ù‡"},
-        {"name": "Catalog", "description": "Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒâ€ŒÙ‡Ø§ Ùˆ Ù…Ø­ØµÙˆÙ„Ø§Øª"},
-        {"name": "Cart & Orders", "description": "Ø³Ø¨Ø¯ Ø®Ø±ÛŒØ¯ Ùˆ Ø³ÙØ§Ø±Ø´"},
-        {"name": "Payments", "description": "Ù¾Ø±Ø¯Ø§Ø®Øª Ùˆ ØªØ£ÛŒÛŒØ¯"},
-        {"name": "Admin", "description": "Ø¹Ù…Ù„ÛŒØ§Øª Ù…Ø¯ÛŒØ±ÛŒØªÛŒ"},
+        {"name": "Auth", "description": "Registration, login, refresh token, OTP"},
+        {"name": "Profile", "description": "User profile and address management"},
+        {"name": "Store", "description": "Seller onboarding and store management"},
+        {"name": "Catalog", "description": "Categories and products"},
+        {"name": "Cart & Orders", "description": "Shopping cart and order lifecycle"},
+        {"name": "Payments", "description": "Payment processing and transaction logs"},
+        {"name": "Admin", "description": "Administrative and back-office endpoints"},
+    ],
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
     ],
 }
 
