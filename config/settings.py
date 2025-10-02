@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,8 +42,17 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'drf_spectacular',
+    'rest_framework_simplejwt',
     'accounts',
+    'marketplace',
+    'catalog',
+    'sales',
+    'payments',
+    'reviews',
     'core',
+    'rest_framework.authtoken',
+    'rest_framework_simplejwt.token_blacklist',
+
 ]
 
 MIDDLEWARE = [
@@ -90,6 +101,17 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": "maktab_shop",
+#         "USER": "maktab_user",
+#         "PASSWORD": "StrongPass!",
+#         "HOST": "127.0.0.1",
+#         "PORT": "5432",
+#     }
+# }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -135,25 +157,40 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
+}
 
+permission_classes = [
+    'rest_framework.permissions.IsAuthenticated',
+]
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Maktab 130 Custom Shop Backend",
+    "TITLE": "Maktab130 Custom Shop Backend",
     "DESCRIPTION": (
-        "سرویس بک‌اند فروشگاهی چندفروشنده.\n"
-        "شامل احراز هویت (JWT/OTP)، پروفایل/آدرس، فروشنده/فروشگاه، "
-        "دسته‌بندی/محصول، سبد خرید/سفارش، پرداخت، و پنل ادمین."
+        "Multi-vendor commerce backend for the Maktab 130 bootcamp project.\n"
+        "Features include JWT/OTP authentication, user profiles and addresses, "
+        "seller/store management, product catalog, cart & order workflow, and payment tracking."
     ),
     "VERSION": "1.0.0",
-
     "SERVERS": [
         {"url": "http://127.0.0.1:8000", "description": "Local"},
     ],
-
-    "COMPONENT_SPLIT_REQUEST": True,
     "SCHEMA_PATH_PREFIX": r"/api",
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SORT_OPERATIONS": True,
     "SECURITY": [{"BearerAuth": []}],
     "COMPONENTS": {
         "securitySchemes": {
@@ -164,21 +201,23 @@ SPECTACULAR_SETTINGS = {
             }
         }
     },
-
-    "SORT_OPERATIONS": True,
     "SWAGGER_UI_SETTINGS": {
-        "persistAuthorization": True,   # توکن بعد رفرش صفحه هم می‌ماند
+        "persistAuthorization": True,
         "displayRequestDuration": True,
+        "filter": True,  # enable right-hand-side filter to quickly find endpoints
     },
-
     "TAGS": [
-        {"name": "Auth", "description": "ثبت‌نام، ورود، رفرش، OTP"},
-        {"name": "Profile", "description": "پروفایل و آدرس‌های کاربر"},
-        {"name": "Store", "description": "ثبت‌نام فروشنده و مدیریت فروشگاه"},
-        {"name": "Catalog", "description": "دسته‌بندی‌ها و محصولات"},
-        {"name": "Cart & Orders", "description": "سبد خرید و سفارش"},
-        {"name": "Payments", "description": "پرداخت و تأیید"},
-        {"name": "Admin", "description": "عملیات مدیریتی"},
+        {"name": "Auth", "description": "Registration, login, refresh token, OTP"},
+        {"name": "Profile", "description": "User profile and address management"},
+        {"name": "Store", "description": "Seller onboarding and store management"},
+        {"name": "Catalog", "description": "Categories and products"},
+        {"name": "Cart & Orders", "description": "Shopping cart and order lifecycle"},
+        {"name": "Payments", "description": "Payment processing and transaction logs"},
+        {"name": "Admin", "description": "Administrative and back-office endpoints"},
+    ],
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+
     ],
 }
 
