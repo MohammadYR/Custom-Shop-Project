@@ -28,7 +28,13 @@ class Address(BaseModel):
 
 
 class OTP(BaseModel):
-    PURPOSES = [("login","Login"),("register","Register")]
+    PURPOSES = [
+    ("login", "Login"),
+    ("register", "Register"), 
+    ("reset_password", "Reset Password"),
+    ("verify_phone", "Verify Phone"),
+    ("verify_email", "Verify Email"),
+]
     channel = models.CharField(max_length=10, default="sms") # sms/email
     target = models.CharField(max_length=120) # phone یا ایمیل
     code = models.CharField(max_length=6)
