@@ -73,4 +73,7 @@ class BaseModel(models.Model):
     # برای خوانایی بهتر    
     @property
     def is_deleted(self):
+        """
+        Boolean convenience property that returns True if deleted_at is set.
+        """
         return self.deleted_at is not None
