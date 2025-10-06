@@ -1,18 +1,255 @@
 openapi: 3.0.3
 info:
-  title: Maktab130 Custom Shop Backend
+  title: Custom Shop Backend
   version: 1.0.0
   description: |-
     Multi-vendor commerce backend for the Maktab 130 bootcamp project.
     Features include JWT/OTP authentication, user profiles and addresses, seller/store management, product catalog, cart & order workflow, and payment tracking.
 paths:
+  /api/accounts/addresses/:
+    get:
+      operationId: accounts_addresses_list
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+          description: ''
+    post:
+      operationId: accounts_addresses_create
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AddressCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AddressCreateUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressCreateUpdate'
+          description: ''
+  /api/accounts/addresses/{id}/:
+    get:
+      operationId: accounts_addresses_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this address.
+        required: true
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+          description: ''
+    put:
+      operationId: accounts_addresses_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this address.
+        required: true
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AddressCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AddressCreateUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressCreateUpdate'
+          description: ''
+    patch:
+      operationId: accounts_addresses_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this address.
+        required: true
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAddressCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAddressCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAddressCreateUpdateRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressCreateUpdate'
+          description: ''
+    delete:
+      operationId: accounts_addresses_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this address.
+        required: true
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/accounts/addresses/{id}/set_default/:
+    post:
+      operationId: accounts_addresses_set_default_create
+      description: |-
+        Sets the given address as the default address for the user.
+
+        :param request: The request object containing the address id.
+        :param pk: The id of the address to be set as default.
+
+        :return: A response object containing a JSON response with a message indicating whether the address was set as default successfully.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this address.
+        required: true
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AddressRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AddressRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+          description: ''
+  /api/accounts/change-password/:
+    put:
+      operationId: accounts_change_password_update
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: accounts_change_password_partial_update
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedChangePasswordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedChangePasswordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedChangePasswordRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/accounts/login/:
     post:
       operationId: accounts_login_create
       description: |-
         Takes a set of user credentials and returns an access and refresh JSON web
         token pair to prove the authentication of those credentials.
-      summary: ورود با identifier (ایمیل/یوزرنیم/موبایل) + دریافت JWT
+      summary: Login
       tags:
       - Auth
       requestBody:
@@ -20,17 +257,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginRequest'
-            examples:
-              LoginWithEmail:
-                value:
-                  identifier: ali@example.com
-                  password: StrongPass123!
-                summary: Login with email
-              LoginWithPhone:
-                value:
-                  identifier: 09120000000
-                  password: StrongPass123!
-                summary: Login with phone
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/LoginRequest'
@@ -40,13 +266,136 @@ paths:
         required: true
       security:
       - BearerAuth: []
+      - {}
       responses:
         '200':
           description: No response body
+  /api/accounts/me/:
+    get:
+      operationId: accounts_me_retrieve
+      tags:
+      - accounts
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+          description: ''
+    put:
+      operationId: accounts_me_update
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserMeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserMeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserMeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+          description: ''
+    patch:
+      operationId: accounts_me_partial_update
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserMeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserMeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserMeRequest'
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMe'
+          description: ''
+  /api/accounts/otp/request/:
+    post:
+      operationId: accounts_otp_request_create
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OTPRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OTPRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OTPRequest'
+          description: ''
+  /api/accounts/otp/verify/:
+    post:
+      operationId: accounts_otp_verify_create
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OTPVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OTPVerifyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OTPVerify'
+          description: ''
   /api/accounts/register/:
     post:
       operationId: accounts_register_create
-      summary: ثبت‌نام کاربر
+      summary: register a new user
       tags:
       - Auth
       requestBody:
@@ -72,6 +421,7 @@ paths:
       security:
       - jwtAuth: []
       - BearerAuth: []
+      - {}
       responses:
         '201':
           content:
@@ -254,66 +604,124 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/token/:
-    post:
-      operationId: token_create
-      description: |-
-        Takes a set of user credentials and returns an access and refresh JSON web
-        token pair to prove the authentication of those credentials.
-      tags:
-      - token
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TokenObtainPairRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TokenObtainPairRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TokenObtainPairRequest'
-        required: true
-      security:
-      - BearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenObtainPair'
-          description: ''
-  /api/token/refresh/:
-    post:
-      operationId: token_refresh_create
-      description: |-
-        Takes a refresh type JSON web token and returns an access type JSON web
-        token if the refresh token is valid.
-      tags:
-      - token
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-        required: true
-      security:
-      - BearerAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenRefresh'
-          description: ''
 components:
   schemas:
+    Address:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        line1:
+          type: string
+          maxLength: 200
+        city:
+          type: string
+          maxLength: 100
+        postal_code:
+          type: string
+          maxLength: 20
+        is_default:
+          type: boolean
+        purpose:
+          type: string
+          maxLength: 20
+      required:
+      - city
+      - id
+      - line1
+      - postal_code
+    AddressCreateUpdate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        line1:
+          type: string
+          maxLength: 200
+        city:
+          type: string
+          maxLength: 100
+        postal_code:
+          type: string
+          maxLength: 20
+        is_default:
+          type: boolean
+        purpose:
+          type: string
+          maxLength: 20
+      required:
+      - city
+      - id
+      - line1
+      - postal_code
+    AddressCreateUpdateRequest:
+      type: object
+      properties:
+        line1:
+          type: string
+          minLength: 1
+          maxLength: 200
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        postal_code:
+          type: string
+          minLength: 1
+          maxLength: 20
+        is_default:
+          type: boolean
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 20
+      required:
+      - city
+      - line1
+      - postal_code
+    AddressRequest:
+      type: object
+      properties:
+        line1:
+          type: string
+          minLength: 1
+          maxLength: 200
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        postal_code:
+          type: string
+          minLength: 1
+          maxLength: 20
+        is_default:
+          type: boolean
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 20
+      required:
+      - city
+      - line1
+      - postal_code
+    ChangePasswordRequest:
+      type: object
+      properties:
+        old_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 8
+      required:
+      - new_password
+      - old_password
     LoginRequest:
       type: object
       properties:
@@ -333,6 +741,140 @@ components:
       - identifier
       - password
       - username
+    OTPRequest:
+      type: object
+      properties:
+        target:
+          type: string
+        purpose:
+          allOf:
+          - $ref: '#/components/schemas/PurposeEnum'
+          default: login
+      required:
+      - target
+    OTPRequestRequest:
+      type: object
+      properties:
+        target:
+          type: string
+          minLength: 1
+        purpose:
+          allOf:
+          - $ref: '#/components/schemas/PurposeEnum'
+          default: login
+      required:
+      - target
+    OTPVerify:
+      type: object
+      properties:
+        target:
+          type: string
+        code:
+          type: string
+          maxLength: 6
+        purpose:
+          allOf:
+          - $ref: '#/components/schemas/PurposeEnum'
+          default: login
+      required:
+      - code
+      - target
+    OTPVerifyRequest:
+      type: object
+      properties:
+        target:
+          type: string
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+          maxLength: 6
+        purpose:
+          allOf:
+          - $ref: '#/components/schemas/PurposeEnum'
+          default: login
+      required:
+      - code
+      - target
+    PatchedAddressCreateUpdateRequest:
+      type: object
+      properties:
+        line1:
+          type: string
+          minLength: 1
+          maxLength: 200
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        postal_code:
+          type: string
+          minLength: 1
+          maxLength: 20
+        is_default:
+          type: boolean
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 20
+    PatchedChangePasswordRequest:
+      type: object
+      properties:
+        old_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 8
+    PatchedUserMeRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+        is_seller:
+          type: boolean
+    Profile:
+      type: object
+      properties:
+        full_name:
+          type: string
+          maxLength: 120
+    ProfileRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          maxLength: 120
+    PurposeEnum:
+      enum:
+      - login
+      - register
+      - reset_password
+      - verify_phone
+      - verify_email
+      type: string
+      description: |-
+        * `login` - Login
+        * `register` - Register
+        * `reset_password` - Reset Password
+        * `verify_phone` - Verify Phone
+        * `verify_email` - Verify Email
     Register:
       type: object
       properties:
@@ -378,32 +920,6 @@ components:
       - email
       - password
       - username
-    TokenObtainPair:
-      type: object
-      properties:
-        access:
-          type: string
-          readOnly: true
-        refresh:
-          type: string
-          readOnly: true
-      required:
-      - access
-      - refresh
-    TokenObtainPairRequest:
-      type: object
-      properties:
-        username:
-          type: string
-          writeOnly: true
-          minLength: 1
-        password:
-          type: string
-          writeOnly: true
-          minLength: 1
-      required:
-      - password
-      - username
     TokenRefresh:
       type: object
       properties:
@@ -423,6 +939,62 @@ components:
           minLength: 1
       required:
       - refresh
+    UserMe:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+        is_seller:
+          type: boolean
+        profile:
+          allOf:
+          - $ref: '#/components/schemas/Profile'
+          readOnly: true
+      required:
+      - email
+      - id
+      - profile
+      - username
+    UserMeRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 20
+        is_seller:
+          type: boolean
+      required:
+      - email
+      - username
   securitySchemes:
     jwtAuth:
       type: http
@@ -431,18 +1003,3 @@ components:
 servers:
 - url: http://127.0.0.1:8000
   description: Local
-tags:
-- name: Auth
-  description: Registration, login, refresh token, OTP
-- name: Profile
-  description: User profile and address management
-- name: Store
-  description: Seller onboarding and store management
-- name: Catalog
-  description: Categories and products
-- name: Cart & Orders
-  description: Shopping cart and order lifecycle
-- name: Payments
-  description: Payment processing and transaction logs
-- name: Admin
-  description: Administrative and back-office endpoints

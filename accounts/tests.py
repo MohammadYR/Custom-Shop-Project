@@ -2,6 +2,8 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
+from accounts.models import Address
 
 User = get_user_model()
 
@@ -113,3 +115,11 @@ def test_otp_flow():
     })
     assert r2.status_code == 200
     assert "access" in r2.data
+
+
+@pytest.mark.django_db
+def test_unique_default_address_db_constraint():
+    u = User.objects.create_user(username="a", password="p")
+    Address.objects.create(user=u, line1="X", is_default=True)
+    with pytest.raises(IntegrityError):
+        Address.objects.create(user=u, line1="Y", is_default=True)

@@ -146,7 +146,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "/static/"
+MEDIA_URL = "/media/"
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -177,7 +181,7 @@ SIMPLE_JWT = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Maktab130 Custom Shop Backend",
+    "TITLE": "Custom Shop Backend",
     "DESCRIPTION": (
         "Multi-vendor commerce backend for the Maktab 130 bootcamp project.\n"
         "Features include JWT/OTP authentication, user profiles and addresses, "
@@ -205,15 +209,15 @@ SPECTACULAR_SETTINGS = {
         "displayRequestDuration": True,
         "filter": True,  # enable right-hand-side filter to quickly find endpoints
     },
-    "TAGS": [
-        {"name": "Auth", "description": "Registration, login, refresh token, OTP"},
-        {"name": "Profile", "description": "User profile and address management"},
-        {"name": "Store", "description": "Seller onboarding and store management"},
-        {"name": "Catalog", "description": "Categories and products"},
-        {"name": "Cart & Orders", "description": "Shopping cart and order lifecycle"},
-        {"name": "Payments", "description": "Payment processing and transaction logs"},
-        {"name": "Admin", "description": "Administrative and back-office endpoints"},
-    ],
+    # "TAGS": [
+    #     {"name": "Auth", "description": "Registration, login, refresh token, OTP"},
+    #     {"name": "Profile", "description": "User profile and address management"},
+    #     {"name": "Store", "description": "Seller onboarding and store management"},
+    #     {"name": "Catalog", "description": "Categories and products"},
+    #     {"name": "Cart & Orders", "description": "Shopping cart and order lifecycle"},
+    #     {"name": "Payments", "description": "Payment processing and transaction logs"},
+    #     {"name": "Admin", "description": "Administrative and back-office endpoints"},
+    # ],
     "POSTPROCESSING_HOOKS": [
         "drf_spectacular.hooks.postprocess_schema_enums",
 
@@ -246,8 +250,7 @@ CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-STATIC_URL = "/static/"
-MEDIA_URL = "/media/"
 
-STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_ROOT = BASE_DIR / "media"
+# بدون نیاز به worker
+# CELERY_TASK_ALWAYS_EAGER = True
+# CELERY_TASK_EAGER_PROPAGATES = True

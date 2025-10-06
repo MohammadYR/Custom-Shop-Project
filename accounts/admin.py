@@ -22,6 +22,8 @@ class AddressAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "line1", "city", "postal_code", "is_default", "purpose", "created_at")
     search_fields = ("user__username", "line1", "city", "postal_code")
     list_filter = ("purpose", "is_default")
+    autocomplete_fields = ("user",)
+    raw_id_fields = ("user",)
 
 @admin.register(OTP)
 class OTPAdmin(admin.ModelAdmin):
