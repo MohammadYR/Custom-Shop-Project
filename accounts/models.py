@@ -31,6 +31,14 @@ class Address(BaseModel):
     is_default = models.BooleanField(default=False)
     purpose = models.CharField(max_length=20, default="shipping") # shipping/billing
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(is_default=True),
+                name="unique_default_address_per_user",
+            )
+        ]
 
 class OTP(BaseModel):
     PURPOSES = [
