@@ -15,28 +15,34 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from core import admin_branding
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+# from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from core.views import health_check
-from rest_framework.routers import DefaultRouter
+# from django.utils.html import format_html
+# from rest_framework.routers import DefaultRouter
 
-# from catalog.views import ProductViewSet
-# from marketplace.views import StoreItemViewSet
-# from sales.views import CartViewSet, OrderViewSet
+# BRAND = "Custom Shop"
+# VERSION = "1.0"
+# env_suffix = " (DEBUG)" if settings.DEBUG else ""
 
-# router = DefaultRouter()
-# router.register(r"products", ProductViewSet)
-# router.register(r"store-items", StoreItemViewSet)
-# router.register(r"carts", CartViewSet)
-# router.register(r"orders", OrderViewSet)
+# admin.site.site_header = format_html("<strong>{}</strong> — مدیریت حرفه‌ای فروشگاه{}", BRAND, env_suffix)
+# admin.site.site_title = format_html("{} Admin{} — پنل مدیریت v{}", BRAND, env_suffix, VERSION)
+# admin.site.index_title = format_html("داشبورد {} — سفارش‌ها، محصولات و گزارش‌ها", BRAND)
+# admin.site.site_url = "/"
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     # path("api/", include(router.urls)),
     path("api/accounts/", include("accounts.urls")),
+    path("api/catalog/", include("catalog.urls")),
+    path("api/marketplace/", include("marketplace.urls")),
+    path("api/sales/", include("sales.urls")),
+    path("api/payments/", include("payments.urls")),
     # path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     # path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
