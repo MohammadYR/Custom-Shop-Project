@@ -250,6 +250,11 @@ CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+ZP_MERCHANT = os.getenv("ZP_MERCHANT", "")
+ZP_BASE = os.getenv("ZP_BASE", "https://sandbox.zarinpal.com")
+PRICE_UNIT = os.getenv("PRICE_UNIT", "TOMAN")
+BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:8000")
+
 
 # بدون نیاز به worker
 # CELERY_TASK_ALWAYS_EAGER = True
