@@ -1386,23 +1386,14 @@ paths:
   /api/payments/{order_id}/start/:
     post:
       operationId: payments_start_create
-      description: |-
-        Start payment for a given order.
-
-        Parameters:
-            order_id (int): ID of the order to start payment for.
-
-        Returns:
-            Response: JSON response containing the startpay_url if successful, otherwise an error message.
-
-        Raises:
-            Response: returns a 404 error if the order is not found or not payable, a 502 error if the gateway connection fails, a 400 error if the payment request fails.
+      description: Creates a payment request and returns StartPay URL for the given
+        order.
+      summary: Start payment (Zarinpal)
       parameters:
       - in: path
         name: order_id
         schema:
-          type: string
-          format: uuid
+          type: integer
         required: true
       tags:
       - payments
@@ -1411,20 +1402,31 @@ paths:
       - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartPayResponse'
+          description: ''
   /api/payments/verify/:
     get:
       operationId: payments_verify_retrieve
-      description: |-
-        Verify payment for a given order.
-
-        Parameters:
-            order_id (str): ID of the order to verify payment for.
-            Authority (str): Authority code from payment gateway.
-            status (str): status of the payment ("OK" or "NOK").
-
-        Returns:
-            Response: JSON response containing the result of the verification.
+      description: Verifies payment using Authority & order_id returned by Zarinpal.
+      summary: Verify payment (Zarinpal callback)
+      parameters:
+      - in: query
+        name: Authority
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: Status
+        schema:
+          type: string
+      - in: query
+        name: order_id
+        schema:
+          type: integer
+        required: true
       tags:
       - payments
       security:
@@ -1433,7 +1435,29 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+          description: ''
+        '502':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+          description: ''
   /api/sales/cart/:
     get:
       operationId: sales_cart_list
@@ -1688,6 +1712,14 @@ paths:
   /api/sales/cart/add-item/:
     post:
       operationId: sales_cart_add_item_create
+      description: |-
+        Add a store item to the user's cart.
+
+        Accepts a request body with the following parameters:
+        - store_item: The ID of the store item to add to the cart.
+        - quantity: The quantity of the store item to add to the cart.
+
+        Returns a response with the updated cart data.
       tags:
       - sales
       security:
@@ -1703,6 +1735,12 @@ paths:
   /api/sales/cart/checkout/:
     post:
       operationId: sales_cart_checkout_create
+      description: |-
+        Checkout the user's cart and create an order.
+
+        Returns a response with the created order data.
+
+        Raises a 400_BAD_REQUEST error if the cart is empty or if the total price of the cart is zero.
       tags:
       - sales
       security:
@@ -2257,8 +2295,7 @@ components:
           format: uuid
           readOnly: true
         user:
-          type: string
-          format: uuid
+          type: integer
           readOnly: true
         items:
           type: array
@@ -2311,7 +2348,8 @@ components:
           maximum: 2147483647
           minimum: 1
         subtotal:
-          type: string
+          type: number
+          format: double
           readOnly: true
         created_at:
           type: string
@@ -2483,11 +2521,10 @@ components:
           format: uuid
           readOnly: true
         user:
-          type: string
-          format: uuid
+          type: integer
           readOnly: true
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/OrderStatusEnum'
         items:
           type: array
           items:
@@ -2539,7 +2576,8 @@ components:
           maximum: 2147483647
           minimum: 1
         subtotal:
-          type: string
+          type: number
+          format: double
           readOnly: true
         created_at:
           type: string
@@ -2583,7 +2621,17 @@ components:
       type: object
       properties:
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/OrderStatusEnum'
+    OrderStatusEnum:
+      enum:
+      - PENDING
+      - PAID
+      - CANCELLED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `PAID` - Paid
+        * `CANCELLED` - Cancelled
     PatchedAddressCreateUpdateRequest:
       type: object
       properties:
@@ -2657,7 +2705,7 @@ components:
       type: object
       properties:
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/OrderStatusEnum'
     PatchedProductRequest:
       type: object
       properties:
@@ -2698,8 +2746,7 @@ components:
       type: object
       properties:
         user:
-          type: string
-          format: uuid
+          type: integer
         display_name:
           type: string
           minLength: 1
@@ -2976,8 +3023,7 @@ components:
           format: uuid
           readOnly: true
         user:
-          type: string
-          format: uuid
+          type: integer
         display_name:
           type: string
           maxLength: 120
@@ -3001,8 +3047,7 @@ components:
       type: object
       properties:
         user:
-          type: string
-          format: uuid
+          type: integer
         display_name:
           type: string
           minLength: 1
@@ -3012,16 +3057,14 @@ components:
       required:
       - display_name
       - user
-    StatusEnum:
-      enum:
-      - PENDING
-      - PAID
-      - CANCELLED
-      type: string
-      description: |-
-        * `PENDING` - Pending
-        * `PAID` - Paid
-        * `CANCELLED` - Cancelled
+    StartPayResponse:
+      type: object
+      properties:
+        startpay_url:
+          type: string
+          format: uri
+      required:
+      - startpay_url
     Store:
       type: object
       properties:
@@ -3192,8 +3235,7 @@ components:
       type: object
       properties:
         id:
-          type: string
-          format: uuid
+          type: integer
           readOnly: true
         username:
           type: string
@@ -3244,6 +3286,26 @@ components:
       required:
       - email
       - username
+    VerifyResponse:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/VerifyResponseStatusEnum'
+        ref_id:
+          type: string
+        payload: {}
+        detail:
+          type: string
+      required:
+      - status
+    VerifyResponseStatusEnum:
+      enum:
+      - success
+      - failed
+      type: string
+      description: |-
+        * `success` - success
+        * `failed` - failed
   securitySchemes:
     jwtAuth:
       type: http

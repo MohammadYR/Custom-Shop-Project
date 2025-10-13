@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from .models import Cart, CartItem, Order, OrderItem
 from marketplace.serializers import StoreItemSerializer
+from decimal import Decimal
+from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.types import OpenApiTypes
 
 class CartItemSerializer(serializers.ModelSerializer):
     store_item_detail = StoreItemSerializer(source="store_item", read_only=True)
@@ -11,7 +14,8 @@ class CartItemSerializer(serializers.ModelSerializer):
         fields = ["id", "cart", "store_item", "store_item_detail", "quantity", "subtotal", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at", "subtotal"]
 
-    def get_subtotal(self, obj):
+    @extend_schema_field(OpenApiTypes.DECIMAL)
+    def get_subtotal(self, obj) -> Decimal:
         return obj.subtotal
 
 class CartSerializer(serializers.ModelSerializer):
@@ -34,7 +38,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = ["id","order","store_item","store_item_detail","unit_price","quantity","subtotal","created_at","updated_at"]
         read_only_fields = ["id","created_at","updated_at","subtotal"]
 
-    def get_subtotal(self, obj):
+    @extend_schema_field(OpenApiTypes.DECIMAL)
+    def get_subtotal(self, obj) -> Decimal:
         return obj.subtotal
 
 class OrderSerializer(serializers.ModelSerializer):
