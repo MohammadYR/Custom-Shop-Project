@@ -20,6 +20,15 @@ class CartViewSet(ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="add-item")
     def add_item(self, request):
+        """
+        Add a store item to the user's cart.
+
+        Accepts a request body with the following parameters:
+        - store_item: The ID of the store item to add to the cart.
+        - quantity: The quantity of the store item to add to the cart.
+
+        Returns a response with the updated cart data.
+        """
         cart, _ = Cart.objects.get_or_create(user=request.user)
         serializer = CartItemSerializer(data={**request.data, "cart": cart.id})
         serializer.is_valid(raise_exception=True)
@@ -35,6 +44,13 @@ class CartViewSet(ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="checkout")
     def checkout(self, request):
+        """
+        Checkout the user's cart and create an order.
+
+        Returns a response with the created order data.
+
+        Raises a 400_BAD_REQUEST error if the cart is empty or if the total price of the cart is zero.
+        """
         cart, _ = Cart.objects.get_or_create(user=request.user)
         try:
             order = create_order_from_cart(cart)

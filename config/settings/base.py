@@ -21,6 +21,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -150,6 +151,13 @@ STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Our settings module lives in config/settings/, so BASE_DIR points to config/.
+# Project-level static assets live in the sibling folder "static" at repo root
+# and we can also reuse some frontend/public assets (fonts, icons) directly.
+STATICFILES_DIRS = [
+    BASE_DIR.parent / "static",
+    BASE_DIR.parent / "frontend" / "frontend" / "public",
+]
 MEDIA_ROOT = BASE_DIR / "media"
 
 # Default primary key field type
@@ -227,9 +235,9 @@ SPECTACULAR_SETTINGS = {
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
-EMAIL_HOST_USER = "m.yousefi.r79@gmail.com"
-EMAIL_HOST_PASSWORD = "wfvrrxkrsmqkfgku"
-DEFAULT_FROM_EMAIL = "m.yousefi.r79@gmail.com"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER","m.yousefi.r79@gmail.com")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD","wfvrrxkrsmqkfgku")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL","m.yousefi.r79@gmail.com")
 EMAIL_USE_TLS = True
 
 CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
@@ -250,12 +258,105 @@ CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-ZP_MERCHANT = os.getenv("ZP_MERCHANT", "")
+ZP_MERCHANT = os.getenv("ZP_MERCHANT", "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
 ZP_BASE = os.getenv("ZP_BASE", "https://sandbox.zarinpal.com")
 PRICE_UNIT = os.getenv("PRICE_UNIT", "TOMAN")
 BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:8000")
+CALLBACK_URL = "http://127.0.0.1:8000/api/payments/verify/"
 
+ZP_REQUEST = f"{ZP_BASE}/pg/v4/payment/request.json"
+ZP_VERIFY = f"{ZP_BASE}/pg/v4/payment/verify.json"
+ZP_STARTPAY = f"{ZP_BASE}/pg/StartPay/"
+
+# --- Zarinpal ---
+# ZP_MODE = os.getenv("ZP_MODE", "sandbox").lower()
+# if ZP_MODE == "production":
+#     ZP_BASE = "https://api.zarinpal.com"
+# else:
+#     ZP_BASE = "https://sandbox.zarinpal.com"
+
+# ZP_MERCHANT = os.getenv("ZP_MERCHANT", "")
+# ZP_REQUEST  = f"{ZP_BASE}/pg/v4/payment/request.json"
+# ZP_VERIFY   = f"{ZP_BASE}/pg/v4/payment/verify.json"
+# ZP_STARTPAY = f"{ZP_BASE}/pg/StartPay/"
+
+# BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:8000")
+# PRICE_UNIT = os.getenv("PRICE_UNIT", "toman")  # toman|rial
+
+
+# SANDBOX = True 
+# MERCHANT_ID = 'a0000000-0000-0000-0000-000000000000'
+# KAVENEGAR_API_KEY = '316E6E44372F773869374333634231505146654A75527A72444E55384E5245696D5A556A534E64657A68733D'
 
 # بدون نیاز به worker
 # CELERY_TASK_ALWAYS_EAGER = True
 # CELERY_TASK_EAGER_PROPAGATES = True
+
+
+JAZZMIN_SETTINGS = {
+    "site_title": "کاستومی شاپ | مدیریت",
+    "site_header": "داشبورد کاستومی شاپ",
+    "site_brand": "Customi Shop",
+    "site_logo": "icons/desktop-logo.svg",
+    # Ensure login and dark-mode logos are shown as well
+    "login_logo": "icons/desktop-logo.svg",
+    "site_logo_dark": "icons/desktop-logo.svg",
+    "welcome_sign": "سلام! به پنل مدیریت کاستومی شاپ خوش آمدید",
+    "copyright": "© 2025 Customi Shop",
+    "show_ui_builder": False,
+    "navigation_sidebar": True,
+    "search_model": ["accounts.User", "catalog.Product", "sales.Order"],
+    "order_with_respect_to": ["accounts", "marketplace", "catalog", "sales", "payments"],
+    "topmenu_links": [
+        {"name": "داشبورد", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"model": "sales.Order"},
+        {"app": "accounts"},
+    ],
+    "usermenu_links": [
+        {"name": "مشاهده سایت", "url": "/", "new_window": True},
+    ],
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "accounts.User": "fas fa-user",
+        "accounts.Profile": "fas fa-id-card",
+        "catalog.Product": "fas fa-box-open",
+        "catalog.Category": "fas fa-layer-group",
+        "marketplace.Store": "fas fa-store",
+        "sales.Order": "fas fa-shopping-cart",
+        "payments.Payment": "fas fa-credit-card",
+    },
+    "language_chooser": False,
+    # Load extra styles from our static dir (fonts/branding)
+    "custom_css": [
+        "css/admin.css",
+    ],
+    "custom_js": [],
+}
+
+JAZZMIN_UI_TWEAKS = {
+    # Use a valid Bootswatch theme shipped with Jazzmin
+    "theme": "flatly",
+    "dark_mode_theme": "darkly",
+    "navbar": "navbar-white navbar-light",
+    "navbar_fixed": True,
+    "navbar_small_text": False,
+    "no_navbar_border": False,
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_fixed": True,
+    "sidebar_nav_child_indent": True,
+    "sidebar_nav_compact_style": False,
+    "body_small_text": False,
+    "brand_colour": "navbar-dark",
+    "accent": "accent-info",
+    "footer_small_text": False,
+    "footer_fixed": False,
+    "layout_boxed": False,
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success",
+    },
+}

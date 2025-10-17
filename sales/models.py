@@ -34,11 +34,14 @@ class CartItem(BaseModel):
 
     @property
     def price(self):
-        return self.store_item.price
+        price = getattr(self.store_item, "price", None)
+        if price is None:
+            return Decimal("0")
+        return Decimal(price)
 
     @property
     def subtotal(self):
-        return self.quantity * self.store_item.price
+        return Decimal(self.quantity) * self.price
 
 ORDER_STATUS = (
     ("PENDING", "Pending"),
@@ -86,7 +89,8 @@ class OrderItem(BaseModel):
 
     @property
     def subtotal(self):
-        return self.quantity * self.unit_price
+        unit_price = self.unit_price if self.unit_price is not None else Decimal("0")
+        return Decimal(self.quantity) * unit_price
 
 
 # یک helper ساده برای تبدیل cart به order
