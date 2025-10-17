@@ -15,12 +15,12 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from core import admin_branding
+# from core import admin_branding
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 # from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from core.views import health_check
 # from django.utils.html import format_html
 # from rest_framework.routers import DefaultRouter
@@ -52,5 +52,7 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL,  document_root=settings.MEDIA_ROOT)
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    # Serve media files in development
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Do NOT add a static() handler for STATIC_URL in dev.
+    # django.contrib.staticfiles serves files from STATICFILES_DIRS automatically.
