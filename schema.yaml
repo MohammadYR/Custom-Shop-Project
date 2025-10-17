@@ -424,6 +424,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Register'
           description: ''
+  /api/accounts/token/:
+    post:
+      operationId: accounts_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - accounts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
   /api/accounts/token/refresh/:
     post:
       operationId: accounts_token_refresh_create
@@ -1383,7 +1412,7 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/payments/{order_id}/start/:
+  /api/payments/start/{order_id}/:
     post:
       operationId: payments_start_create
       description: Creates a payment request and returns StartPay URL for the given
@@ -1394,6 +1423,7 @@ paths:
         name: order_id
         schema:
           type: integer
+        description: Order ID to start payment for.
         required: true
       tags:
       - payments
@@ -3212,6 +3242,32 @@ components:
       required:
       - name
       - owner
+    TokenObtainPair:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenObtainPairRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
     TokenRefresh:
       type: object
       properties:
