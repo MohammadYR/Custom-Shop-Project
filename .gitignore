@@ -218,4 +218,7 @@ __marimo__/
 .vscode/
 
 # Django
-*/migrations/
+# */migrations/
+
+temp_file.txt
+static/icons/*.tsx
