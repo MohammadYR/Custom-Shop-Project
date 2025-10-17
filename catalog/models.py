@@ -67,4 +67,4 @@ class ProductVariant(BaseModel):
         unique_together = (("product", "name"),)
 
     def __str__(self):
-        return f"{self.product.title} — {self.name}"
+        return f"{self.product.title} - {self.name}"
