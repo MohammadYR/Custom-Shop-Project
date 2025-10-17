@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from accounts.models import Address
+from accounts.models import Address, OTP
 
 User = get_user_model()
 
@@ -105,7 +105,9 @@ def test_otp_flow():
         "purpose": "login"
     })
     assert r1.status_code == 200
-    code = r1.data["code"]
+    otp = OTP.objects.filter(target="test@example.com", purpose="login").order_by("-created_at").first()
+    assert otp is not None
+    code = otp.code
     
 
     r2 = c.post(reverse("otp_verify"), {
