@@ -6,7 +6,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
@@ -28,7 +28,8 @@ def to_rial(amount_toman: Decimal | int | float) -> int:
     return int(Decimal(str(amount_toman)) * 10)
 
 class StartPayView(APIView):
-    permission_classes = [AllowAny]   # فعلاً برای تست؛ بعداً IsAuthenticated
+    permission_classes = [IsAuthenticated]
+    serializer_class = StartPayResponseSerializer
 
     @extend_schema(
         responses={200: StartPayResponseSerializer},
@@ -44,6 +45,8 @@ class StartPayView(APIView):
             )
         except Order.DoesNotExist:
             return Response({"detail": "Order not found or already paid."}, status=404)
+        except TypeError:
+            return Response({'detail': 'Invalid order id supplied.'}, status=400)
 
 
         amount_rial = to_rial(order.total_price)
@@ -71,6 +74,7 @@ class StartPayView(APIView):
 
 class VerifyView(APIView):
     permission_classes = [AllowAny]
+    serializer_class = VerifyResponseSerializer
 
     @extend_schema(
         responses={200: VerifyResponseSerializer},
@@ -79,6 +83,8 @@ class VerifyView(APIView):
     def get(self, request):
         authority = request.GET.get("Authority")
         status_str = request.GET.get("Status")
+        if not authority or not status_str:
+            return Response({'detail': 'Authority and Status query parameters are required.'}, status=400)
 
         # اگر کاربر برگشت، باید سفارش متناظر با authority را پیدا کنیم.
         try:
@@ -109,7 +115,6 @@ class VerifyView(APIView):
         if j.get("data", {}).get("code") == 100:
             ref_id = str(j["data"]["ref_id"])
             with transaction.atomic():
-                # Set status directly since OrderStatus enum is not defined in model
                 order.status = "PAID"
                 order.payment_ref_id = ref_id
                 order.paid_at = timezone.now()
