@@ -151,6 +151,13 @@ STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Our settings module lives in config/settings/, so BASE_DIR points to config/.
+# Project-level static assets live in the sibling folder "static" at repo root
+# and we can also reuse some frontend/public assets (fonts, icons) directly.
+STATICFILES_DIRS = [
+    BASE_DIR.parent / "static",
+    BASE_DIR.parent / "frontend" / "frontend" / "public",
+]
 MEDIA_ROOT = BASE_DIR / "media"
 
 # Default primary key field type
@@ -287,75 +294,69 @@ ZP_STARTPAY = f"{ZP_BASE}/pg/StartPay/"
 
 
 JAZZMIN_SETTINGS = {
-    # عنوان اصلی که در تب مرورگر و بالای صفحه لاگین نمایش داده می‌شود
-    "site_title": "پنل مدیریت فروشگاه",
-
-    # متنی که در هدر اصلی پنل نمایش داده می‌شود (می‌تواند کوتاه باشد)
-    "site_header": "فروشگاه کاستومی",
-
-    # لوگوی سایت شما (مسیر فایل در پوشه static)
-    # برای مثال: "assets/img/logo.png"
+    "site_title": "کاستومی شاپ | مدیریت",
+    "site_header": "داشبورد کاستومی شاپ",
+    "site_brand": "Customi Shop",
     "site_logo": "icons/desktop-logo.svg",
-
-    "show_ui_builder": True,
-
-    # متن خوش‌آمدگویی در صفحه لاگین
-    "welcome_sign": "به پنل مدیریت فروشگاه خوش آمدید",
-
-    # متن کپی‌رایت در فوتر
-    "copyright": "CustomiShop.com",
-
-    # مدل‌هایی که می‌خواهید در نوار جستجوی بالای صفحه قابل جستجو باشند
-    "search_model": ["accounts.User", "catalog.Product"],
-
-    # اپ‌هایی که می‌خواهید ترتیب نمایش آن‌ها در منو متفاوت باشد
-    "order_with_respect_to": ["accounts", "catalog", "marketplace"],
-
-    # آیکون برای اپ‌ها (از آیکون‌های FontAwesome استفاده می‌شود)
+    # Ensure login and dark-mode logos are shown as well
+    "login_logo": "icons/desktop-logo.svg",
+    "site_logo_dark": "icons/desktop-logo.svg",
+    "welcome_sign": "سلام! به پنل مدیریت کاستومی شاپ خوش آمدید",
+    "copyright": "© 2025 Customi Shop",
+    "show_ui_builder": False,
+    "navigation_sidebar": True,
+    "search_model": ["accounts.User", "catalog.Product", "sales.Order"],
+    "order_with_respect_to": ["accounts", "marketplace", "catalog", "sales", "payments"],
+    "topmenu_links": [
+        {"name": "داشبورد", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"model": "sales.Order"},
+        {"app": "accounts"},
+    ],
+    "usermenu_links": [
+        {"name": "مشاهده سایت", "url": "/", "new_window": True},
+    ],
     "icons": {
         "auth": "fas fa-users-cog",
-        "auth.user": "fas fa-user",
-        "auth.Group": "fas fa-users",
-        "products.Product": "fas fa-box-open",
-        "orders.Order": "fas fa-shopping-cart",
+        "accounts.User": "fas fa-user",
+        "accounts.Profile": "fas fa-id-card",
+        "catalog.Product": "fas fa-box-open",
+        "catalog.Category": "fas fa-layer-group",
+        "marketplace.Store": "fas fa-store",
+        "sales.Order": "fas fa-shopping-cart",
+        "payments.Payment": "fas fa-credit-card",
     },
-
-    # مخفی کردن مدل‌های خاص از منو
-    # "hide_models": ["auth.group"],
-
-    # زبان پیش‌فرض (برای پنل ادمین فارسی)
-    "language_chooser": False, # اگر فقط از فارسی استفاده می‌کنید، این را غیرفعال کنید
+    "language_chooser": False,
+    # Load extra styles from our static dir (fonts/branding)
+    "custom_css": [
+        "css/admin.css",
+    ],
+    "custom_js": [],
 }
 
 JAZZMIN_UI_TWEAKS = {
-    "navbar_small_text": False,
-    "footer_small_text": False,
-    "body_small_text": True,
-    "brand_small_text": False,
-    "brand_colour": "navbar-dark",
-    "accent": "accent-primary",
-    "navbar": "navbar-expand-sm navbar-light bg-light",
-    # "navbar": "navbar-dark",
-    "no_navbar_border": False,
+    # Use a valid Bootswatch theme shipped with Jazzmin
+    "theme": "flatly",
+    "dark_mode_theme": "darkly",
+    "navbar": "navbar-white navbar-light",
     "navbar_fixed": True,
-    "layout_boxed": False,
-    "footer_fixed": False,
-    "sidebar_fixed": True,
+    "navbar_small_text": False,
+    "no_navbar_border": False,
     "sidebar": "sidebar-dark-primary",
-    "sidebar_nav_small_text": False,
-    "sidebar_disable_expand": False,
-    "sidebar_nav_child_indent": False,
+    "sidebar_fixed": True,
+    "sidebar_nav_child_indent": True,
     "sidebar_nav_compact_style": False,
-    "sidebar_nav_legacy_style": False,
-    "sidebar_nav_flat_style": False,
-    "theme": "flatly",  # می‌توانید از تم‌های دیگر مثل "darkly", "litera", "sandstone" استفاده کنید
-    "dark_mode_theme": "darkly", # تم برای حالت تاریک
+    "body_small_text": False,
+    "brand_colour": "navbar-dark",
+    "accent": "accent-info",
+    "footer_small_text": False,
+    "footer_fixed": False,
+    "layout_boxed": False,
     "button_classes": {
         "primary": "btn-primary",
         "secondary": "btn-secondary",
         "info": "btn-info",
         "warning": "btn-warning",
         "danger": "btn-danger",
-        "success": "btn-success"
-    }
+        "success": "btn-success",
+    },
 }
