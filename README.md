@@ -1,8 +1,8 @@
 # 🛍️ Custom Shop Backend (Django + DRF)
 
-A **multi-vendor e-commerce backend** built with **Django 5**, **Django REST Framework**, and **Celery/Redis** — developed as part of the **Maktab130 Final Project**.
+A **multi-vendor e-commerce backend** built with **Django 5**, **DRF**, and **Celery/Redis**, developed as part of the **Maktab130 Final Project**.
 
-> If you’re in a hurry, jump to the [Quick Start](#quick-start) section.
+> For a quick start, jump to the [Quick Start](#quick-start) section below.
 
 ---
 
@@ -11,12 +11,12 @@ A **multi-vendor e-commerce backend** built with **Django 5**, **Django REST Fra
 - [Repository Structure](#repository-structure)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
-  - [Run with Docker](#1-run-with-docker)
-  - [Run Locally](#2-run-locally)
+  - [1️⃣ Run with Docker](#1️⃣-run-with-docker)
+  - [2️⃣ Run Locally](#2️⃣-run-locally)
 - [Environment Variables (.env)](#environment-variables-env)
+- [Celery & Redis Architecture](#celery--redis-architecture)
 - [Database & Migrations](#database--migrations)
 - [Admin User](#admin-user)
-- [Celery & Redis Architecture](#celery--redis-architecture)
 - [API Documentation](#api-documentation)
 - [Authentication](#authentication)
 - [Commit Convention & Branching](#commit-convention--branching)
@@ -29,70 +29,95 @@ A **multi-vendor e-commerce backend** built with **Django 5**, **Django REST Fra
 ---
 
 ## ✨ Features
-- **Multi-vendor marketplace** — vendor signup, store management, product linking.
-- **Dynamic product catalog** — nested categories, flexible attributes, image galleries.
-- **Cart & checkout workflow** — persistent carts, discounts, and order snapshots.
-- **Payment tracking** — `Payment` & `Transaction` models for callback and audit logs.
-- **Account system** — custom user model with JWT, OTP, profile, and addresses.
-- **Scalable infra** — Celery + Redis background tasks, CORS, OpenAPI docs.
-- **Soft Delete everywhere** — safe data removal with full recovery options.
+- 🏪 **Multi-vendor marketplace:** seller registration, store creation, inventory management.  
+- 📦 **Product catalog:** nested categories, product attributes, image galleries.  
+- 🛒 **Cart & Checkout:** persistent cart, discount handling, order snapshot.  
+- 💳 **Payments:** record and verify transactions (Zarinpal-ready).  
+- 👤 **Authentication:** JWT + OTP with custom user and address book.  
+- ⚙️ **Celery & Redis:** asynchronous background jobs and notifications.  
+- 🧱 **Soft Delete:** recoverable records for all domain models.  
+- 🧰 **API-first design:** complete OpenAPI documentation via `drf-spectacular`.
 
 ---
 
 ## 🧩 Repository Structure
 ```
 config/       # Settings, URLs, Celery app, ASGI/WSGI
-core/         # BaseModel, soft delete, managers, utils
-accounts/     # Auth, serializers, profile, addresses, OTP
-catalog/      # Category, product, images, flexible attributes
-marketplace/  # Vendor stores & StoreItem (Product <-> Store link)
-sales/        # Cart, checkout, and order management
-payments/     # Payment records, gateway callbacks
-reviews/      # (Upcoming) product/store reviews
-static/       # Public static assets
-frontend/     # Optional React (Vite) frontend scaffold
-docs/         # ERD, schema, project docs
+core/         # BaseModel, Soft Delete logic, shared utils
+accounts/     # Authentication, OTP, Profile, Address
+catalog/      # Category & Product management
+marketplace/  # Store & vendor models
+sales/        # Cart, Order, Checkout
+payments/     # Payment records, verification, callbacks
+reviews/      # (optional) Ratings and reviews
+static/       # Static assets (local)
+frontend/     # Optional React (Vite) frontend
+docker/       # Dockerfile & docker-compose.yml
+docs/         # Documentation, ERD, API schemas
 ```
-> A full ERD diagram is available in `myapp_models.png`.
+
+📄 **ERD** → available in `docs/myapp_models.png`
 
 ---
 
 ## ⚙️ Tech Stack
-- **Python 3.11**, **Django 5**, **DRF**
-- **drf-spectacular** for API schema & Swagger UI
-- **djangorestframework-simplejwt** for authentication
-- **Celery 5** + **Redis** for background jobs
-- **SQLite (dev)** or **PostgreSQL (prod)**
-- **Jazzmin** for customized Django admin
+| Layer | Technology |
+|-------|-------------|
+| Backend | **Python 3.11**, **Django 5**, **DRF** |
+| Auth | **SimpleJWT**, OTP |
+| Async | **Celery 5**, **Redis** |
+| Database | SQLite (dev) / PostgreSQL (prod) |
+| API Docs | **drf-spectacular**, Swagger UI |
+| Admin UI | **Jazzmin** |
+| Testing | **pytest**, **flake8** |
 
 ---
 
 ## 🚀 Quick Start
 
 ### 1️⃣ Run with Docker
-**Prerequisites:** Docker Desktop
+> Recommended for consistency and deployment parity.
 
+**Step-by-step:**
 ```bash
+# 1. Copy environment file
+cp .env.example .env
+
+# 2. Build and start all services (web, redis, celery, celery-beat)
 docker compose up --build -d
+
+# 3. Apply migrations
 docker compose exec web python manage.py migrate
+
+# 4. Create admin user
 docker compose exec web python manage.py createsuperuser
+
+# 5. View logs
+docker compose logs -f web
+docker compose logs -f celery
+docker compose logs -f redis
 ```
 
-**Default services:**
-- API → http://127.0.0.1:8000  
-- Admin → http://127.0.0.1:8000/admin/  
-- Docs → http://127.0.0.1:8000/api/schema/swagger-ui/
+**Default URLs:**
+- API → [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- Admin → `/admin/`
+- Swagger → `/api/schema/swagger-ui/`
+
+🛑 **To stop containers:**
+```bash
+docker compose down
+```
 
 ---
 
-### 2️⃣ Run Locally
-**Prerequisites:** Python 3.11 and optional Redis
+### 2️⃣ Run Locally (No Docker)
+**Requirements:** Python 3.11, Redis (optional)
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env  # then edit values
+cp .env.example .env  # and update values
 
 python manage.py migrate
 python manage.py runserver
@@ -138,6 +163,43 @@ ADMIN_LOGO=/static/img/logo.png
 
 ---
 
+## ⚙️ Celery & Redis Architecture
+
+```
+ ┌──────────────────────────────┐
+ │        Django Backend        │
+ │   (views, models, signals)   │
+ └──────────────┬───────────────┘
+                │
+        sends async task
+                │
+                ▼
+        ┌──────────────┐
+        │   Celery     │  ← Task queue manager
+        └──────┬───────┘
+               │
+          publishes job
+               │
+               ▼
+        ┌──────────────┐
+        │   Redis      │  ← Message broker & cache
+        └──────┬───────┘
+               │
+           pulls job
+               ▼
+        ┌──────────────┐
+        │   Worker     │  ← Executes async tasks
+        └──────────────┘
+```
+
+**Flow:**  
+1. Django triggers a task (e.g., send email).  
+2. Celery pushes it into Redis.  
+3. Worker executes it asynchronously.  
+4. Logs/results stored in DB or cache.
+
+---
+
 ## 🗄️ Database & Migrations
 ```bash
 python manage.py makemigrations
@@ -152,44 +214,6 @@ Switch to PostgreSQL easily by updating your `.env` values and restarting the ap
 python manage.py createsuperuser
 ```
 Then log in at `/admin/`.
-
----
-
-## ⚙️ Celery & Redis Architecture
-
-```text
-                ┌──────────────────────────┐
-                │        Django API        │
-                │   (views, models, etc.)  │
-                └────────────┬─────────────┘
-                             │
-                      Sends async task
-                             │
-                             ▼
-                     ┌─────────────┐
-                     │   Celery    │  ← Task producer & manager
-                     └─────────────┘
-                             │
-                        Publishes job
-                             │
-                             ▼
-                     ┌─────────────┐
-                     │   Redis     │  ← Message broker & cache
-                     └─────────────┘
-                             │
-                         Pulls job
-                             │
-                             ▼
-                     ┌─────────────┐
-                     │   Worker    │  ← Executes async jobs
-                     └─────────────┘
-```
-
-**Flow Summary:**  
-1. Django sends a task (e.g., send email, calculate total).  
-2. Celery pushes the job into Redis.  
-3. Worker pulls from Redis and executes asynchronously.  
-4. Results or logs are stored back in DB or cache.
 
 ---
 
