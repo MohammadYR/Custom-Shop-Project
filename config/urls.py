@@ -34,11 +34,11 @@ from django.utils.html import format_html
 # admin.site.index_title = format_html("داشبورد {} — سفارش‌ها، محصولات و گزارش‌ها", BRAND)
 # admin.site.site_url = "/"
 
-BRAND = "Custom Shop"
-env_suffix = " (DEBUG)" if getattr(settings, "DEBUG", False) else ""
-admin.site.site_header = format_html("<strong>{}</strong>{}", BRAND, env_suffix)
-admin.site.site_title = format_html("{} Admin{}", BRAND, env_suffix)
-admin.site.index_title = format_html("Dashboard — {}", BRAND)
+# BRAND = "Custom Shop"
+# env_suffix = " (DEBUG)" if getattr(settings, "DEBUG", False) else ""
+# admin.site.site_header = format_html("<strong>{}</strong>{}", BRAND, env_suffix)
+# admin.site.site_title = format_html("{} Admin{}", BRAND, env_suffix)
+# admin.site.index_title = format_html("Dashboard — {}", BRAND)
 
 
 urlpatterns = [
