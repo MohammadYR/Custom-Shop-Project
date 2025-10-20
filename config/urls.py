@@ -22,7 +22,7 @@ from django.conf.urls.static import static
 # from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from core.views import health_check
-# from django.utils.html import format_html
+from django.utils.html import format_html
 # from rest_framework.routers import DefaultRouter
 
 # BRAND = "Custom Shop"
@@ -34,6 +34,12 @@ from core.views import health_check
 # admin.site.index_title = format_html("داشبورد {} — سفارش‌ها، محصولات و گزارش‌ها", BRAND)
 # admin.site.site_url = "/"
 
+BRAND = "Custom Shop"
+env_suffix = " (DEBUG)" if getattr(settings, "DEBUG", False) else ""
+admin.site.site_header = format_html("<strong>{}</strong>{}", BRAND, env_suffix)
+admin.site.site_title = format_html("{} Admin{}", BRAND, env_suffix)
+admin.site.index_title = format_html("Dashboard — {}", BRAND)
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -43,6 +49,7 @@ urlpatterns = [
     path("api/marketplace/", include("marketplace.urls")),
     path("api/sales/", include("sales.urls")),
     path("api/payments/", include("payments.urls")),
+    path("api/reviews/", include("reviews.urls")),
     # path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     # path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
