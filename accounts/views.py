@@ -10,6 +10,7 @@ from rest_framework import decorators, generics, permissions, response, status, 
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import AnonRateThrottle
 
+from marketplace.models import Seller, Store
 from .models import Address, OTP, User
 from .permissions import IsOwner
 from .serializers import (
@@ -189,3 +190,41 @@ class OTPVerifyView(generics.CreateAPIView):
             return response.Response({"error": "User Not Found"}, status=status.HTTP_404_NOT_FOUND)
 
         return response.Response({"message": "OTP تایید شد"}, status=status.HTTP_200_OK)
+    
+
+class RegisterAsSellerView(generics.CreateAPIView):
+    """
+    POST /api/myuser/register_as_seller/
+    body:
+      {
+        "display_name": "Shop Owner",
+        "store": {"name": "My Great Shop", "description": "..." }
+      }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        if hasattr(user, "seller_profile"):
+            raise ValidationError({"detail": "You already are a seller."})
+
+        display_name = request.data.get("display_name") or user.username
+        store_data = request.data.get("store") or {}
+
+        seller = Seller.objects.create(user=user, display_name=display_name)
+
+        if not user.is_seller:
+            user.is_seller = True
+            user.save(update_fields=["is_seller"])
+
+        if store_data.get("name"):
+            Store.objects.create(
+                owner=seller,
+                name=store_data["name"],
+                description=store_data.get("description", ""),
+            )
+
+        return response.Response(
+            {"details": "Seller profile created."},
+            status=status.HTTP_201_CREATED
+        )
