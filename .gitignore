@@ -1,6 +1,10 @@
 # .gitignore
 .env
 
+# --- Local/Test files ---
+.env.test
+docker-compose.test.yml
+
 config/media/
 config/staticfiles/
 
