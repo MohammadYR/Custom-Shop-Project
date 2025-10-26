@@ -1,4 +1,6 @@
 from django.http import JsonResponse
+from django.urls import reverse
+from django.views.generic import TemplateView
 from django.db import connections
 from django.db.utils import OperationalError
 import redis
@@ -26,3 +28,12 @@ def health_check(request):
         "db": db_status,
         "redis": redis_status
     })
+
+
+class SwaggerPlusView(TemplateView):
+    template_name = "swagger/custom_ui.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["schema_url"] = reverse("schema")
+        return ctx

@@ -5,6 +5,7 @@ from celery import shared_task
 from django.conf import settings
 # from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import EmailMessage
+from django.utils import timezone
 
 
 # Note: The SMS sending logic is kept here for completeness.
@@ -74,3 +75,12 @@ def send_otp_sms_task(phone_number: str, message: str):
     print(f"--- END SIMULATION ---")
     # In a real project, you would have your SMS gateway logic here.
     # _send_sms_via_gateway(phone_number, message)
+
+
+@shared_task
+def prune_expired_otps_task():
+    """
+    Periodic cleanup for expired, unused OTP codes to keep table tidy.
+    """
+    from .models import OTP
+    OTP.objects.filter(expires_at__lt=timezone.now(), is_used=False).delete()

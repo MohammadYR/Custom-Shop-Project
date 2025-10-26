@@ -1,0 +1,48 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Custom Shop API Docs+</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'drf_spectacular/swagger-ui.css' %}" />
+    <style>
+      html { box-sizing: border-box; overflow-y: scroll; }
+      *, *:before, *:after { box-sizing: inherit; }
+      body { margin:0; background: #f5f7fa; }
+      .topbar { background: linear-gradient(90deg,#198754,#1aa06a) !important; }
+    </style>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+
+    <script src="{% static 'drf_spectacular/swagger-ui-bundle.js' %}"></script>
+    <script src="{% static 'drf_spectacular/swagger-ui-standalone-preset.js' %}"></script>
+    <script src="{% static 'js/swagger-autofill.js' %}"></script>
+    <script>
+      window.onload = function() {
+        const ui = SwaggerUIBundle({
+          url: "{{ schema_url }}",
+          dom_id: '#swagger-ui',
+          presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+          layout: "StandaloneLayout",
+          deepLinking: true,
+          persistAuthorization: true,
+          displayOperationId: true,
+          tryItOutEnabled: true,
+          requestInterceptor: function(req) {
+            // Store OTP request params for later autofill
+            try { SwaggerAutofill.onRequest(req); } catch(e) {}
+            return req;
+          },
+          onComplete: function() {
+            // Wire DOM listeners for OTP Verify autofill
+            try { SwaggerAutofill.onReady(); } catch(e) {}
+          }
+        });
+        window.ui = ui;
+      }
+    </script>
+  </body>
+  </html>
+

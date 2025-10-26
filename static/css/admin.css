@@ -10,6 +10,24 @@ html, body {
   font-family: 'IRANYekanX', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif;
 }
 
+/* Theme tint overrides to harmonize with Jazzmin success palette */
+.main-header .navbar,
+.content-header .breadcrumb,
+.brand-link {
+  /* if theme provides green, keep it subtle */
+  --admin-primary: #198754; /* bootstrap success */
+}
+.main-header .navbar {
+  background-image: linear-gradient(90deg, #198754, #1aa06a);
+}
+.brand-link {
+  background-color: #146c43 !important;
+  color: #fff !important;
+}
+.brand-link .brand-image {
+  filter: brightness(100%);
+}
+
 /* Slight tweak so the brand logo sits nicely */
 .brand-link .brand-image {
   max-height: 36px;
@@ -21,3 +39,66 @@ html, body {
   vertical-align: middle;
 }
 
+/* Sticky table header for large result sets */
+#changelist-form .results thead th,
+.content-wrapper .card .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--body-bg, #fff);
+}
+
+/* Subtle row hover */
+#changelist-form .results tbody tr:hover,
+.content-wrapper .card .table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+/* Compact filters with collapsible support (paired with JS) */
+#changelist-filter.filters-collapsed .card-body,
+.filters-collapsed #changelist-filter .card-body {
+  display: none;
+}
+.admin-filter-toggle {
+  margin-left: auto;
+}
+
+/* Toast styles for admin.js feedback */
+#admin-toast-host {
+  position: fixed;
+  z-index: 9999;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.admin-toast {
+  background: rgba(30, 41, 59, 0.95);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all 180ms ease-in-out;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+}
+.admin-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Generic badge helpers if needed in admin displays */
+.admin-badge { padding: 2px 6px; border-radius: 10px; color: #fff; font-size: 12px; }
+.admin-badge.success { background: #16a34a; }
+.admin-badge.info { background: #2563eb; }
+.admin-badge.danger { background: #dc2626; }
+.admin-badge.muted { background: #6b7280; }
+
+/* Login page background tweak */
+.login-page, body.login {
+  background: radial-gradient(circle at 20% 20%, rgba(25,135,84,0.12), transparent 40%),
+              radial-gradient(circle at 80% 0%, rgba(26,160,106,0.12), transparent 42%),
+              #f8fff9;
+}
