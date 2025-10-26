@@ -58,22 +58,14 @@ def ensure_single_default_address(sender, instance: Address, **kwargs):
 @receiver(post_save, sender=OTP, dispatch_uid="accounts.send_otp_on_create")
 def send_otp_on_create(sender, instance: OTP, created, **kwargs):
     """
-    When an OTP is created, send it via the configured channel.
-    Uses Celery tasks if available; falls back to direct call if broker is unavailable.
+    When an OTP is created, send it via Celery (Redis broker).
+    This enforces async delivery and avoids duplicate, synchronous sends.
     """
     if not created:
         return
 
     message = f"Your verification code is: {instance.code}"
-    try:
-        if instance.channel == "email":
-            send_otp_email_task.delay(instance.target, message)
-        else:
-            # default to sms
-            send_otp_sms_task.delay(instance.target, message)
-    except Exception:
-        # Fallback to synchronous execution in environments without broker
-        if instance.channel == "email":
-            send_otp_email_task(instance.target, message)
-        else:
-            send_otp_sms_task(instance.target, message)
+    if instance.channel == "email":
+        send_otp_email_task.delay(instance.target, message)
+    else:
+        send_otp_sms_task.delay(instance.target, message)

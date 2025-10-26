@@ -27,7 +27,7 @@ from .serializers import (
     OTPRequestResponseSerializer,
     OTPVerifyResponseSerializer,
 )
-from .tasks import send_otp_email_task, send_otp_sms_task
+
 
 
 class RegisterThrottle(AnonRateThrottle):
@@ -174,19 +174,11 @@ class OTPRequestView(generics.CreateAPIView):
             channel=channel,
         )
 
-        message_text = f"Your verification code is {code}. It expires in {expiry_minutes} minutes."
-
+        # Sending the OTP is handled centrally by accounts.signals (post_save on OTP).
+        # This avoids double-sending when creating OTPs from different entrypoints.
         payload = {"message": "OTP sent successfully."}
-        
         if settings.DEBUG:
             payload["code"] = code
-
-
-        if channel == "email":
-            send_otp_email_task.delay(target, message_text)
-        else:
-            send_otp_sms_task.delay(target, message_text)
-
         return response.Response(payload, status=status.HTTP_200_OK)
 
 
