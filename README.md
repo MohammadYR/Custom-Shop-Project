@@ -15,9 +15,11 @@ A **multi-vendor e-commerce backend** built with **Django 5**, **DRF**, and **Ce
   - [2️⃣ Run Locally](#2️⃣-run-locally)
 - [Environment Variables (.env)](#environment-variables-env)
 - [Celery & Redis Architecture](#celery--redis-architecture)
+- [Signals & Side Effects](#signals--side-effects)
 - [Database & Migrations](#database--migrations)
 - [Admin User](#admin-user)
 - [API Documentation](#api-documentation)
+- [Swagger Tips](#swagger-tips)
 - [Authentication](#authentication)
 - [Commit Convention & Branching](#commit-convention--branching)
 - [Soft Delete & BaseModel](#soft-delete--basemodel)
@@ -32,9 +34,11 @@ A **multi-vendor e-commerce backend** built with **Django 5**, **DRF**, and **Ce
 - 🏪 **Multi-vendor marketplace:** seller registration, store creation, inventory management.  
 - 📦 **Product catalog:** nested categories, product attributes, image galleries.  
 - 🛒 **Cart & Checkout:** persistent cart, discount handling, order snapshot.  
-- 💳 **Payments:** record and verify transactions (Zarinpal-ready).  
+- 💳 **Payments:** record and verify transactions (Zarinpal-ready) + transaction logs.  
 - 👤 **Authentication:** JWT + OTP with custom user and address book.  
 - ⚙️ **Celery & Redis:** asynchronous background jobs and notifications.  
+- 🔔 **Low-stock alerts:** seller notification on inventory threshold cross.  
+- 🔄 **Smart signals:** auto Cart on user create, single default address, payment sync, restock on cancel.  
 - 🧱 **Soft Delete:** recoverable records for all domain models.  
 - 🧰 **API-first design:** complete OpenAPI documentation via `drf-spectacular`.
 
@@ -94,14 +98,18 @@ docker compose exec web python manage.py createsuperuser
 
 # 5. View logs
 docker compose logs -f web
-docker compose logs -f celery
+docker compose logs -f worker
+docker compose logs -f beat
 docker compose logs -f redis
 ```
 
 **Default URLs:**
 - API → [http://127.0.0.1:8000](http://127.0.0.1:8000)
-- Admin → `/admin/`
-- Swagger → `/api/schema/swagger-ui/`
+- Admin → `/admin/` (Jazzmin UI)
+- Swagger UI → `/api/docs/`
+- ReDoc → `/api/redoc/`
+- Schema (YAML) → `/api/schema.yaml`
+- Docs+ (OTP autofill helper) → `/api/docs+/`
 
 🛑 **To stop containers:**
 ```bash
@@ -125,8 +133,8 @@ python manage.py runserver
 
 Run Celery manually:
 ```bash
-celery -A config worker -l info
-celery -A config beat -l info
+celery -A config worker -l info     # async tasks (emails, logs, alerts)
+celery -A config beat -l info       # periodic jobs (OTP prune)
 ```
 
 ---
@@ -155,10 +163,23 @@ REDIS_URL=redis://redis:6379/0
 SIMPLE_JWT_ACCESS_LIFETIME_MIN=30
 SIMPLE_JWT_REFRESH_LIFETIME_DAYS=7
 
-# Admin Branding
-ADMIN_SITE_TITLE=Maktab130 Admin
-ADMIN_SITE_HEADER=Maktab130
-ADMIN_LOGO=/static/img/logo.png
+# Admin (Jazzmin) Branding (optional)
+ADMIN_SITE_TITLE=Custom Shop Admin
+ADMIN_SITE_HEADER=Custom Shop
+ADMIN_SITE_BRAND=Custom Shop
+ADMIN_WELCOME_SIGN=Welcome to Custom Shop Admin
+ADMIN_LOGO=icons/desktop-logo.svg
+ADMIN_LOGIN_LOGO=icons/desktop-logo.svg
+ADMIN_FAVICON=icons/desktop-logo.svg
+ADMIN_THEME=minty
+ADMIN_DARK_THEME=darkly
+
+# Inventory alerts
+INVENTORY_LOW_STOCK_THRESHOLD=3
+
+# Payments (optional; sandbox defaults exist)
+ZARINPAL_MERCHANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+ZARINPAL_CALLBACK_URL=http://127.0.0.1:8000/api/payments/verify/
 ```
 
 ---
@@ -198,6 +219,12 @@ ADMIN_LOGO=/static/img/logo.png
 3. Worker executes it asynchronously.  
 4. Logs/results stored in DB or cache.
 
+Typical tasks in this project:
+- Order paid/cancel emails to customer; seller notifications
+- Payment transaction logging (after verify)
+- Low-stock email alerts to store owners
+- Periodic OTP cleanup (hourly)
+
 ---
 
 ## 🗄️ Database & Migrations
@@ -218,22 +245,18 @@ Then log in at `/admin/`.
 ---
 
 ## 📘 API Documentation
-| Path | Description |
-|------|--------------|
-| `/api/accounts/register/` | Register new user |
-| `/api/accounts/login/` | Obtain JWT tokens |
-| `/api/accounts/token/refresh/` | Refresh access token |
-| `/api/accounts/request-otp/`, `/verify-otp/` | OTP verification |
-| `/api/myuser/` | View/update profile |
-| `/api/myuser/address/` | Manage addresses |
-| `/api/categories/` | Public categories |
-| `/api/stores/` | Public stores |
-| `/api/mycart/`, `/add_to_cart/{id}/` | Manage shopping cart |
-| `/api/orders/checkout/` | Convert cart to order |
-| `/api/payments/verify/` | Verify payment |
+Use the interactive docs:
+- Swagger UI → `/api/docs/`
+- ReDoc → `/api/redoc/`
+- Schema (YAML) → `/api/schema.yaml`
+- Docs+ (OTP autofill helper) → `/api/docs+/`
 
-Swagger UI → `/api/schema/swagger-ui/`  
-ReDoc → `/api/schema/redoc/`
+Tags overview (not exhaustive):
+- Auth: register, login (JWT), OTP request/verify, me, change-password
+- Catalog: categories, products, product-variants
+- Marketplace: sellers, stores, items
+- Cart & Orders: cart, cart-items, orders, order-items, checkout
+- Payments: start, verify
 
 ---
 
@@ -247,6 +270,19 @@ Example login request:
 curl -X POST http://127.0.0.1:8000/api/accounts/login/ \
   -H "Content-Type: application/json" \
   -d '{"identifier":"user@example.com", "password":"yourpass"}'
+```
+
+OTP flow:
+```bash
+# Request code (email or phone)
+curl -X POST http://127.0.0.1:8000/api/accounts/otp/request/ \
+  -H "Content-Type: application/json" \
+  -d '{"target":"user@example.com","purpose":"login"}'
+
+# Verify code
+curl -X POST http://127.0.0.1:8000/api/accounts/otp/verify/ \
+  -H "Content-Type: application/json" \
+  -d '{"target":"user@example.com","code":"123456","purpose":"login"}'
 ```
 
 ---
@@ -285,8 +321,9 @@ Workflow:
 
 ## 🧑‍💼 Admin Panel & Branding
 - **Jazzmin** integration for modern UI.
-- Custom theme (e.g. `flatly`), logos, and CSS.
-- `static/css/admin.css` for typography and fonts (e.g. IRANYekanX).
+- Custom theme (Bootswatch `minty` light / `darkly` dark) via env.
+- Logos & favicon from `static/icons/desktop-logo.svg` (configurable via env).
+- Extra polish: `static/css/admin.css` and `static/js/admin.js`.
 
 ---
 
@@ -297,6 +334,13 @@ flake8
 ```
 - Unit tests cover Accounts, Catalog, Sales, and Payments.
 - Smoke tests via DRF + cURL recommended.
+
+Quick manual test scenario (Swagger):
+1) Register → Login → Authorize
+2) Register as seller (+optional auto-store) → Create category/product/variant → Create store item (stock > 3)
+3) Add to cart → Checkout → Order created
+4) Payments Start (sandbox) → Verify OK/FAILED → observe Order/Payment changes
+5) Set stock from >3 to 2 → low-stock email enqueued (check worker logs)
 
 ---
 
@@ -320,6 +364,8 @@ flake8
   ```
 - **Docker Desktop issues:** restart service with admin rights.
 - **Static files not loading:** verify `STATICFILES_DIRS` or run `collectstatic`.
+- **/api/schema/ error:** ensure drf-spectacular installed and views decorated correctly; restart dev server after changes.
+- **Payment sandbox unavailable:** StartPay may return 502 without internet. You can still test Verify with Status=FAILED to simulate cancel.
 
 ---
 
@@ -329,3 +375,17 @@ Open an issue or send a pull request — contributions are welcome!
 ---
 
 Made with ❤️ for **Maktab130 Final Project**.
+## 🔁 Signals & Side Effects
+- Accounts:
+  - Create Profile on new User
+  - Enforce single default Address on pre_save
+  - Send OTP asynchronously on post_save(OTP)
+- Sales:
+  - Auto-create Cart on new User
+  - Restock StoreItem quantities when Order becomes CANCELLED
+  - Set paid_at and send notifications when Order becomes PAID
+- Payments:
+  - Ensure Payment row exists for each Order; keep `amount/authority` in sync
+  - Mark Payment as VERIFIED when Order is PAID
+- Marketplace:
+  - Send low-stock alert when stock crosses below threshold
