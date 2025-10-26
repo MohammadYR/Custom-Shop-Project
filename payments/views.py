@@ -11,9 +11,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
 
 from sales.models import Order
+from .models import Payment
+from .tasks import log_transaction_task
 from .serializers import StartPayResponseSerializer, VerifyResponseSerializer
 
 ZP_API_REQUEST = "https://sandbox.zarinpal.com/pg/v4/payment/request.json"
@@ -27,6 +30,16 @@ def to_rial(amount_toman: Decimal | int | float) -> int:
 
     return int(Decimal(str(amount_toman)) * 10)
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="order_id",
+            type=OpenApiTypes.UUID,
+            location=OpenApiParameter.PATH,
+            description="Order UUID to start payment for",
+        )
+    ]
+)
 class StartPayView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = StartPayResponseSerializer
@@ -67,11 +80,30 @@ class StartPayView(APIView):
         if j.get("data", {}).get("code") == 100:
             authority = j["data"]["authority"]
             Order.objects.filter(pk=order.id).update(payment_authority=authority)
+            # Keep Payment.authority in sync as update() doesn't trigger signals
+            Payment.objects.filter(order=order).update(authority=authority)
             return Response({"startpay_url": f"{ZP_API_START}{authority}"}, status=200)
 
         return Response({"error": j.get("errors")}, status=400)
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="Authority",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Payment authority code from gateway",
+        ),
+        OpenApiParameter(
+            name="Status",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Callback status from gateway (OK or failure)",
+            examples=[OpenApiExample("OK", value="OK")],
+        ),
+    ]
+)
 class VerifyView(APIView):
     permission_classes = [AllowAny]
     serializer_class = VerifyResponseSerializer
@@ -119,7 +151,8 @@ class VerifyView(APIView):
                 order.payment_ref_id = ref_id
                 order.paid_at = timezone.now()
                 order.save(update_fields=["status", "payment_ref_id", "paid_at"])
-
+            # Log transaction asynchronously after commit (ensures Payment exists)
+            transaction.on_commit(lambda: log_transaction_task.delay(str(order.id), ref_id, j))
             return Response({"status": "success", "ref_id": ref_id}, status=200)
 
         return Response({"status": "failed", "code": j.get("data", {}).get("code")}, status=400)
