@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from drf_spectacular.utils import extend_schema, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
 from rest_framework import decorators, generics, permissions, response, status, viewsets
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import AnonRateThrottle
@@ -24,6 +24,8 @@ from .serializers import (
     LoginRequestSerializer,
     LoginResponseSerializer,
     LoginCoreSerializer,
+    OTPRequestResponseSerializer,
+    OTPVerifyResponseSerializer,
 )
 from .tasks import send_otp_email_task, send_otp_sms_task
 
@@ -113,12 +115,47 @@ class AddressViewSet(viewsets.ModelViewSet):
         return response.Response({"detail": "آدرس پیش‌فرض شد."}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    tags=["Auth"],
+    summary="Request OTP code (email or SMS)",
+    request=OTPRequestSerializer,
+    responses={
+        200: OpenApiResponse(OTPRequestResponseSerializer, description="OTP sent. In DEBUG, response may include code."),
+        429: OpenApiResponse(description="Rate limited"),
+    },
+    examples=[
+        OpenApiExample(
+            "OTP via email",
+            value={"target": "user@example.com", "purpose": "login"},
+            request_only=True,
+        ),
+        OpenApiExample(
+            "OTP via SMS",
+            value={"target": "09120000000", "purpose": "login"},
+            request_only=True,
+        ),
+    ],
+)
 class OTPRequestView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = OTPRequestSerializer
     throttle_classes = [OTPThrottle]
 
     def create(self, request, *args, **kwargs):
+        """
+        Creates a new OTP object and sends the OTP code to the user via their preferred channel.
+
+        Args:
+            request: The request object.
+            *args: Additional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            A Response object with a JSON payload containing the result of the operation.
+
+        Raises:
+            ValidationError: If the request data is invalid.
+        """
         ser = self.get_serializer(data=request.data)
         ser.is_valid(raise_exception=True)
         target = ser.validated_data["target"]
@@ -140,6 +177,7 @@ class OTPRequestView(generics.CreateAPIView):
         message_text = f"Your verification code is {code}. It expires in {expiry_minutes} minutes."
 
         payload = {"message": "OTP sent successfully."}
+        
         if settings.DEBUG:
             payload["code"] = code
 
@@ -152,6 +190,16 @@ class OTPRequestView(generics.CreateAPIView):
         return response.Response(payload, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    tags=["Auth"],
+    summary="Verify OTP code",
+    request=OTPVerifySerializer,
+    responses={
+        200: OpenApiResponse(OTPVerifyResponseSerializer, description="OK. For login purpose returns JWT tokens."),
+        400: OpenApiResponse(description="Invalid OTP Code"),
+        404: OpenApiResponse(description="User Not Found for login purpose"),
+    },
+)
 class OTPVerifyView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = OTPVerifySerializer
