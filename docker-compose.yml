@@ -31,6 +31,17 @@ services:
       db:
         condition: service_healthy
 
+  beat:
+    build: .
+    env_file:
+      - .env
+    command: celery -A config beat -l info
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+
   web:
     build:
       context: .           
