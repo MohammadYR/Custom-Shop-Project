@@ -37,7 +37,7 @@
 
 ---
 
-## 🧩 نمودار معماری
+## 🧩 نمودار معماری (اصلاح‌شده)
 
 ```text
                             ┌─────────────────────┐
@@ -65,8 +65,10 @@
      │        │   Reviews  │◄────►│  Products │◄─────┘             │ Admin API │
      │        │ (Ratings & │      │  & Stores │                    │ (Mgmt UI) │
      │        │ Feedback)  │      └───────────┘                    └───────────┘
-     │        └────────────┘
-     │
+     │        ▲
+     │        │ (address_id)
+     └────────┘
+
 ┌────▼──────┐
 │ Core App  │
 │ (BaseModel│
@@ -74,6 +76,9 @@
 │ Redis,env)│
 └───────────┘
 ```
+
+**توضیح اتصال جدید:**  
+در این نسخه، `Reviews` علاوه‌بر ارتباط با `Products` و `Stores`، به `Addresses` نیز متصل است (کلید خارجی `address_id`) تا امکان وابستگی نظر به آدرس (مثلاً آدرس ارسال/فاکتور یا محدودهٔ جغرافیایی) فراهم شود.
 
 ---
 
@@ -87,7 +92,7 @@
 | **products/** | محصول و دسته‌بندی |
 | **orders/** | سبد خرید، سفارش، Checkout |
 | **payments/** | اتصال به درگاه، تأیید تراکنش |
-| **reviews/** | نظرات و امتیازدهی |
+| **reviews/** | نظرات و امتیازدهی (مرتبط با Product/Store/Address) |
 | **config/** | تنظیمات اصلی پروژه (ASGI/WSGI, Celery, urls) |
 
 ---
@@ -208,7 +213,7 @@ pytest -q
 flake8
 ```
 
-پوشش تست: Accounts، Orders، Payments، Stores
+پوشش تست: Accounts، Orders، Payments، Stores، Reviews
 
 ---
 
