@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'core',
     'rest_framework.authtoken',
     'rest_framework_simplejwt.token_blacklist',
+    'celery',
 
 ]
 
@@ -156,7 +157,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # and we can also reuse some frontend/public assets (fonts, icons) directly.
 STATICFILES_DIRS = [
     BASE_DIR.parent / "static",
-    BASE_DIR.parent / "frontend" / "frontend" / "public",
+    # BASE_DIR.parent / "frontend" / "frontend" / "public",
 ]
 MEDIA_ROOT = BASE_DIR / "media"
 

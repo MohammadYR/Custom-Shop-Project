@@ -203,7 +203,7 @@ class ProfileAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     @admin.display(description="Avatar")
     def avatar_preview(self, obj):
         if obj.avatar:
-            return format_html('<img src="{}" width="50" height="50" style="border-radius:50%;" />', obj.avatar.url)
+            return format_html('<img src="{}" width="65" height="70" style="border-radius:60%;" />', obj.avatar.url)
         return "—"
 
 @admin.register(Address)

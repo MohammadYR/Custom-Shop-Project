@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
 from rest_framework import decorators, generics, permissions, response, status, viewsets
@@ -41,6 +42,7 @@ class OTPThrottle(AnonRateThrottle):
 @extend_schema(
     tags=["Auth"],
     summary="Register a new user",
+    responses={201: LoginResponseSerializer},
     examples=[
         OpenApiExample(
             "Register Example",
@@ -59,6 +61,16 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
     # throttle_classes = [RegisterThrottle]
+
+    def create(self, request, *args, **kwargs):
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        user = ser.save()
+        # Issue JWT tokens immediately after successful registration
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+        payload = {"access": str(refresh.access_token), "refresh": str(refresh)}
+        return response.Response(payload, status=status.HTTP_201_CREATED)
 
 
 @extend_schema(
@@ -187,9 +199,12 @@ class OTPRequestView(generics.CreateAPIView):
     summary="Verify OTP code",
     request=OTPVerifySerializer,
     responses={
-        200: OpenApiResponse(OTPVerifyResponseSerializer, description="OK. For login purpose returns JWT tokens."),
+        200: OpenApiResponse(
+            OTPVerifyResponseSerializer,
+            description="OK. For login/register purpose returns JWT tokens.",
+        ),
         400: OpenApiResponse(description="Invalid OTP Code"),
-        404: OpenApiResponse(description="User Not Found for login purpose"),
+        404: OpenApiResponse(description="User Not Found for login/register purpose"),
     },
 )
 class OTPVerifyView(generics.CreateAPIView):
@@ -217,16 +232,41 @@ class OTPVerifyView(generics.CreateAPIView):
         otp.is_used = True
         otp.save(update_fields=["is_used"])
 
-        if purpose == "login":
+        if purpose in ("login", "register"):
             user = User.objects.filter(
                 models.Q(email__iexact=target) | models.Q(phone_number=target)
             ).first()
+
+            # Auto-register if purpose=register and user not found, for email targets
+            if not user and purpose == "register":
+                if "@" in target:
+                    base_username = (target.split("@", 1)[0] or "user").lower()
+                    username = base_username
+                    i = 1
+                    while User.objects.filter(username__iexact=username).exists():
+                        username = f"{base_username}{i}"
+                        i += 1
+                    user = User(username=username, email=target.lower())
+                    # Django 5+: make_random_password was removed; use get_random_string
+                    user.set_password(get_random_string(20))
+                    user.save()
+                else:
+                    # Cannot create user with phone-only because email field is required
+                    return response.Response(
+                        {
+                            "error": "User Not Found",
+                            "detail": "ثبت‌نام با شماره موبایل تنها پشتیبانی نمی‌شود؛ لطفاً ایمیل معتبر وارد کنید یا از مسیر register استفاده کنید.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
             if user:
                 from rest_framework_simplejwt.tokens import RefreshToken
 
                 refresh = RefreshToken.for_user(user)
                 return response.Response({"access": str(refresh.access_token), "refresh": str(refresh)})
 
+            # For login when no user is found
             return response.Response({"error": "User Not Found"}, status=status.HTTP_404_NOT_FOUND)
 
         return response.Response({"message": "OTP تایید شد"}, status=status.HTTP_200_OK)

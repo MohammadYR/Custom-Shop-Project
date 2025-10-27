@@ -8,6 +8,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse
 
 # Import existing viewsets/views
 from catalog.views import CategoryViewSet, ProductViewSet, ProductVariantViewSet
@@ -20,7 +21,12 @@ from sales.views import CartViewSet, CartItemViewSet, OrderViewSet
 from sales.models import Cart, CartItem, create_order_from_cart, Order
 from reviews.models import ProductReview, StoreReview
 from reviews.serializers import ProductReviewSerializer, StoreReviewSerializer
-from accounts.serializers import OTPRequestSerializer, OTPVerifySerializer
+from accounts.serializers import (
+    OTPRequestSerializer,
+    OTPVerifySerializer,
+    OTPRequestResponseSerializer,
+    OTPVerifyResponseSerializer,
+)
 from accounts.models import OTP, User
 from rest_framework import status
 from django.utils import timezone
@@ -30,6 +36,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from payments.views import ZP_API_REQUEST, ZP_API_START, MERCHANT_ID, to_rial
 from accounts.models import Address as AddressModel
+from django.utils.crypto import get_random_string
 
 
 # Router exposing catalog/products/stores at /api/*
@@ -316,13 +323,38 @@ def store_reviews_create_view(request, store_id: str):
 
 
 # Aliases for OTP that accept frontend payloads
+@extend_schema(
+    tags=["Auth"],
+    summary="Request OTP code (alias)",
+    request=OTPRequestSerializer,
+    responses={
+        200: OpenApiResponse(
+            OTPRequestResponseSerializer,
+            description="OTP sent. In DEBUG, response may include code.",
+        ),
+        400: OpenApiResponse(description="Bad Request"),
+    },
+    examples=[
+        OpenApiExample(
+            "OTP via email",
+            value={"target": "user@example.com", "purpose": "login"},
+            request_only=True,
+        ),
+        OpenApiExample(
+            "OTP via SMS",
+            value={"target": "09120000000", "purpose": "login"},
+            request_only=True,
+        ),
+    ],
+)
 @api_view(["POST"])  # /api/accounts/request-otp/
 @permission_classes([AllowAny])
 def otp_request_alias(request):
     username = request.data.get("username") or request.data.get("target")
     if not username:
         return Response({"message": "username is required"}, status=status.HTTP_400_BAD_REQUEST)
-    data = {"target": username, "purpose": "login"}
+    purpose = request.data.get("purpose") or "login"
+    data = {"target": username, "purpose": purpose}
     ser = OTPRequestSerializer(data=data)
     ser.is_valid(raise_exception=True)
 
@@ -353,14 +385,25 @@ def otp_request_alias(request):
     return Response(payload, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    tags=["Auth"],
+    summary="Verify OTP code (alias)",
+    request=OTPVerifySerializer,
+    responses={
+        200: OpenApiResponse(OTPVerifyResponseSerializer, description="OK. For login/register purpose returns JWT tokens."),
+        400: OpenApiResponse(description="Invalid OTP Code / Missing fields"),
+        404: OpenApiResponse(description="User Not Found (login purpose)"),
+    },
+)
 @api_view(["POST"])  # /api/accounts/verify-otp/
 @permission_classes([AllowAny])
 def otp_verify_alias(request):
     username = request.data.get("username") or request.data.get("target")
     code = request.data.get("password") or request.data.get("code")
+    purpose = request.data.get("purpose") or "login"
     if not username or not code:
         return Response({"message": "username and code are required"}, status=status.HTTP_400_BAD_REQUEST)
-    data = {"target": username, "code": code, "purpose": "login"}
+    data = {"target": username, "code": code, "purpose": purpose}
     ser = OTPVerifySerializer(data=data)
     ser.is_valid(raise_exception=True)
 
@@ -393,43 +436,36 @@ def otp_verify_alias(request):
         otp.is_used = True
         otp.save(update_fields=["is_used"])
 
-    # Return tokens like original view; create user if not exists (login/register UX)
+    # Align behavior with accounts OTPVerifyView: for login/register return tokens
     user = User.objects.filter(
         models.Q(email__iexact=target) | models.Q(phone_number=target)
     ).first()
-    if not user:
-        # Auto-register minimal user using target as email or phone
-        try:
-            if "@" in target:
-                base_username = target.split("@")[0][:20] or "user"
-                username = base_username
-                i = 1
-                while User.objects.filter(username=username).exists():
-                    i += 1
-                    username = f"{base_username}{i}"
-                user = User.objects.create_user(
-                    username=username,
-                    email=target,
-                    password=RefreshToken.for_user.__name__,  # dummy
-                )
-            else:
-                base_username = ("u" + target)[-20:]
-                username = base_username
-                i = 1
-                while User.objects.filter(username=username).exists():
-                    i += 1
-                    username = f"{base_username}{i}"
-                user = User.objects.create_user(
-                    username=username,
-                    password=RefreshToken.for_user.__name__,  # dummy
-                )
-                user.phone_number = target
-                user.save(update_fields=["phone_number"])
-        except Exception:
-            return Response({"error": "User creation failed"}, status=status.HTTP_400_BAD_REQUEST)
+    if not user and purpose == "register":
+        if "@" in target:
+            # create minimal user for email-based registration
+            base_username = (target.split("@", 1)[0] or "user").lower()[:20]
+            username = base_username
+            i = 1
+            while User.objects.filter(username__iexact=username).exists():
+                username = f"{base_username}{i}"
+                i += 1
+            user = User(username=username, email=target.lower())
+            user.set_password(get_random_string(20))
+            user.save()
+        else:
+            return Response(
+                {
+                    "error": "User Not Found",
+                    "detail": "ثبت‌نام با شماره موبایل تنها پشتیبانی نمی‌شود؛ لطفاً ایمیل معتبر وارد کنید یا از مسیر register استفاده کنید.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    refresh = RefreshToken.for_user(user)
-    return Response({"access": str(refresh.access_token), "refresh": str(refresh)}, status=status.HTTP_200_OK)
+    if user:
+        refresh = RefreshToken.for_user(user)
+        return Response({"access": str(refresh.access_token), "refresh": str(refresh)}, status=status.HTTP_200_OK)
+
+    return Response({"error": "User Not Found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 # Paginated aliases for categories/products (ServerPaginatedResult)

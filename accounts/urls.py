@@ -14,7 +14,6 @@ router = DefaultRouter()
 router.register(r"addresses", AddressViewSet, basename="address")
 
 urlpatterns = [
-    # موجود
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", LoginView.as_view(), name="login"),
     path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),

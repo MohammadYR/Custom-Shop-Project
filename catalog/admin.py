@@ -69,7 +69,7 @@ class ProductAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     @admin.display(description="Image")
     def image_thumb(self, obj):
         if obj.image:
-            return format_html('<img src="{}" style="height:38px;width:auto;border-radius:4px;object-fit:cover"/>', obj.image.url)
+            return format_html('<img src="{}" style="height:108px;width:auto;border-radius:4px;object-fit:cover"/>', obj.image.url)
         return "—"
 
     @admin.display(description="Preview")
