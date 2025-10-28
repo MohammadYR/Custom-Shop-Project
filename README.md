@@ -1,7 +1,7 @@
 [![build](https://github.com/MohammadYR/Custom-Shop-Project/actions/workflows/ci.yml/badge.svg)](https://github.com/MohammadYR/Custom-Shop-Project/actions)
+[![codeql](https://github.com/MohammadYR/Custom-Shop-Project/actions/workflows/codeql.yml/badge.svg)](https://github.com/MohammadYR/Custom-Shop-Project/actions)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 [![coverage](https://img.shields.io/badge/coverage-90%2B%25-brightgreen)](#)
-
 
 # 🛍️ Custom Shop Backend (Django + DRF)
 
