@@ -2,13 +2,5 @@ from django.apps import AppConfig
 
 
 class PaymentsConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'payments'
-
-    def ready(self):
-        # Import signal handlers
-        try:
-            from . import signals  # noqa: F401
-        except Exception:
-            # Be tolerant during migration phase
-            pass
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "payments"

@@ -1,158 +1,144 @@
+import logging
 import uuid
-from decimal import Decimal
 
-import requests
-from django.conf import settings
 from django.db import transaction
-from django.utils import timezone
-
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, extend_schema
+from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.views import APIView
 
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
-from drf_spectacular.types import OpenApiTypes
+from sales.models import Order, OrderStatus
+from sales.services import InvalidOrderTransition, cancel_order, mark_order_paid
 
-from sales.models import Order
+from .gateway import ZarinpalClient, ZarinpalError, to_rial
 from .models import Payment
-from .tasks import log_transaction_task
 from .serializers import StartPayResponseSerializer, VerifyResponseSerializer
+from .tasks import log_transaction_task
 
-ZP_API_REQUEST = "https://sandbox.zarinpal.com/pg/v4/payment/request.json"
-ZP_API_VERIFY  = "https://sandbox.zarinpal.com/pg/v4/payment/verify.json"
-ZP_API_START   = "https://sandbox.zarinpal.com/pg/StartPay/"
+logger = logging.getLogger(__name__)
 
-MERCHANT_ID   = getattr(settings, "ZARINPAL_MERCHANT_ID", "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
-CALLBACK_URL  = getattr(settings, "ZARINPAL_CALLBACK_URL", "http://127.0.0.1:8000/api/payments/verify/")
-
-def to_rial(amount_toman: Decimal | int | float) -> int:
-
-    return int(Decimal(str(amount_toman)) * 10)
 
 @extend_schema(
+    tags=["Payments"],
     parameters=[
-        OpenApiParameter(
-            name="order_id",
-            type=OpenApiTypes.UUID,
-            location=OpenApiParameter.PATH,
-            description="Order UUID to start payment for",
-        )
-    ]
+        OpenApiParameter("order_id", OpenApiTypes.UUID, OpenApiParameter.PATH, description="Order to pay for")
+    ],
+    request=None,
+    responses={
+        200: StartPayResponseSerializer,
+        400: OpenApiResponse(description="Order total is zero or the gateway rejected the request"),
+        404: OpenApiResponse(description="Order not found, not yours or not PENDING"),
+        502: OpenApiResponse(description="Gateway unreachable"),
+    },
+    description="Start a Zarinpal payment for one of your PENDING orders and return the StartPay URL.",
 )
 class StartPayView(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = StartPayResponseSerializer
 
-    @extend_schema(
-        responses={200: StartPayResponseSerializer},
-        description="Start Zarinpal sandbox payment and return StartPay URL.",
-    )
     def post(self, request, order_id: uuid.UUID):
+        order = (
+            Order.objects.filter(pk=order_id, user=request.user, status=OrderStatus.PENDING)
+            .prefetch_related("items")
+            .first()
+        )
+        if order is None:
+            return Response({"detail": "Order not found or not payable."}, status=status.HTTP_404_NOT_FOUND)
+
+        total = order.total_price
+        if total <= 0:
+            return Response({"detail": "Order total must be positive."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            order = Order.objects.select_related("user").get(
-                pk=order_id,
-                user=request.user,
-                paid_at__isnull=True,
+            result = ZarinpalClient().request_payment(amount_rial=to_rial(total), description=f"Order #{order.id}")
+        except ZarinpalError as exc:
+            logger.warning("Zarinpal request failed for order %s: %s", order.id, exc)
+            return Response({"error": "Payment gateway request failed."}, status=status.HTTP_502_BAD_GATEWAY)
+
+        with transaction.atomic():
+            Order.objects.filter(pk=order.pk).update(payment_authority=result.authority)
+            Payment.objects.update_or_create(
+                order=order,
+                defaults={
+                    "authority": result.authority,
+                    "amount": total,
+                    "provider": order.payment_gateway or "zarinpal",
+                    "status": "INITIATED",
+                },
             )
-        except Order.DoesNotExist:
-            return Response({"detail": "Order not found or already paid."}, status=404)
-        except TypeError:
-            return Response({'detail': 'Invalid order id supplied.'}, status=400)
+        return Response({"startpay_url": result.startpay_url}, status=status.HTTP_200_OK)
 
 
-        amount_rial = to_rial(order.total_price)
-
-        data = {
-            "merchant_id": MERCHANT_ID,
-            "amount": amount_rial,
-            "callback_url": CALLBACK_URL,
-            "description": f"Order #{order.id}",
-        }
-        headers = {"accept": "application/json", "content-type": "application/json"}
-
-        r = requests.post(ZP_API_REQUEST, json=data, headers=headers, timeout=15)
-        if r.status_code != 200:
-            return Response({"error": "Zarinpal request failed"}, status=502)
-
-        j = r.json()
-        if j.get("data", {}).get("code") == 100:
-            authority = j["data"]["authority"]
-            Order.objects.filter(pk=order.id).update(payment_authority=authority)
-            # Keep Payment.authority in sync as update() doesn't trigger signals
-            Payment.objects.filter(order=order).update(authority=authority)
-            return Response({"startpay_url": f"{ZP_API_START}{authority}"}, status=200)
-
-        return Response({"error": j.get("errors")}, status=400)
+@extend_schema(exclude=True)
+class LegacyStartPayView(StartPayView):
+    """Old path /api/payments/start/<order_id>/ kept for compatibility."""
 
 
 @extend_schema(
+    tags=["Payments"],
     parameters=[
-        OpenApiParameter(
-            name="Authority",
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.QUERY,
-            description="Payment authority code from gateway",
-        ),
-        OpenApiParameter(
-            name="Status",
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.QUERY,
-            description="Callback status from gateway (OK or failure)",
-            examples=[OpenApiExample("OK", value="OK")],
-        ),
-    ]
+        OpenApiParameter("Authority", OpenApiTypes.STR, OpenApiParameter.QUERY, required=True,
+                         description="Payment authority code from the gateway"),
+        OpenApiParameter("Status", OpenApiTypes.STR, OpenApiParameter.QUERY, required=True,
+                         description="Callback status from the gateway (OK or NOK)",
+                         examples=[OpenApiExample("OK", value="OK")]),
+    ],
+    responses={200: VerifyResponseSerializer, 400: VerifyResponseSerializer, 404: OpenApiResponse(),
+               502: OpenApiResponse(description="Gateway unreachable")},
+    description=(
+        "Gateway callback. Verifies the payment and moves the order PENDING -> PAID "
+        "(or PENDING -> CANCELLED when Status != OK). Idempotent: calling it again for "
+        "a paid order returns the same success response."
+    ),
 )
 class VerifyView(APIView):
     permission_classes = [AllowAny]
-    serializer_class = VerifyResponseSerializer
 
-    @extend_schema(
-        responses={200: VerifyResponseSerializer},
-        description="Verify Zarinpal sandbox payment callback.",
-    )
     def get(self, request):
         authority = request.GET.get("Authority")
         status_str = request.GET.get("Status")
         if not authority or not status_str:
-            return Response({'detail': 'Authority and Status query parameters are required.'}, status=400)
+            return Response(
+                {"detail": "Authority and Status query parameters are required."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # اگر کاربر برگشت، باید سفارش متناظر با authority را پیدا کنیم.
-        try:
-            order = Order.objects.get(payment_authority=authority, paid_at__isnull=True)
-        except Order.DoesNotExist:
-            return Response({"detail": "Order not found or already verified."}, status=404)
+        order = Order.objects.filter(payment_authority=authority).prefetch_related("items").first()
+        if order is None:
+            return Response({"detail": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if order.status == OrderStatus.PAID:  # repeated callback
+            return Response({"status": "success", "ref_id": order.payment_ref_id or ""})
+        if order.status == OrderStatus.CANCELLED:
+            return Response({"status": "canceled"})
 
         if status_str != "OK":
-            # Mark order as cancelled when user/payment provider returns non-OK
-            order.status = "CANCELLED"
-            order.save(update_fields=["status"])
-            return Response({"status": "canceled"}, status=200)
+            try:
+                cancel_order(order)
+            except InvalidOrderTransition:
+                pass
+            return Response({"status": "canceled"})
 
-        amount_rial = to_rial(order.total_price)
+        try:
+            result = ZarinpalClient().verify(amount_rial=to_rial(order.total_price), authority=authority)
+        except ZarinpalError as exc:
+            logger.warning("Zarinpal verify failed for order %s: %s", order.id, exc)
+            return Response({"error": "Verify request failed."}, status=status.HTTP_502_BAD_GATEWAY)
 
-        data = {
-            "merchant_id": MERCHANT_ID,
-            "amount": amount_rial,
-            "authority": authority,
-        }
-        headers = {"accept": "application/json", "content-type": "application/json"}
+        if not result.ok:
+            Payment.objects.filter(order=order).exclude(status="VERIFIED").update(status="FAILED")
+            return Response({"status": "failed", "code": result.code}, status=status.HTTP_400_BAD_REQUEST)
 
-        r = requests.post(ZP_API_VERIFY, json=data, headers=headers, timeout=15)
-        if r.status_code != 200:
-            return Response({"error": "Verify request failed"}, status=502)
+        try:
+            # mark_order_paid locks the order row, so concurrent callbacks are serialized.
+            mark_order_paid(order, ref_id=result.ref_id)
+        except InvalidOrderTransition:
+            order.refresh_from_db()
+            if order.status != OrderStatus.PAID:
+                return Response({"status": "failed", "detail": "Order is no longer payable."},
+                                status=status.HTTP_409_CONFLICT)
+            return Response({"status": "success", "ref_id": order.payment_ref_id or ""})
 
-        j = r.json()
-        if j.get("data", {}).get("code") == 100:
-            ref_id = str(j["data"]["ref_id"])
-            with transaction.atomic():
-                order.status = "PAID"
-                order.payment_ref_id = ref_id
-                order.paid_at = timezone.now()
-                order.save(update_fields=["status", "payment_ref_id", "paid_at"])
-            # Log transaction asynchronously after commit (ensures Payment exists)
-            transaction.on_commit(lambda: log_transaction_task.delay(str(order.id), ref_id, j))
-            return Response({"status": "success", "ref_id": ref_id}, status=200)
-
-        return Response({"status": "failed", "code": j.get("data", {}).get("code")}, status=400)
+        order_id, ref_id, payload = str(order.id), result.ref_id or "", result.payload
+        transaction.on_commit(lambda: log_transaction_task.delay(order_id, ref_id, payload))
+        return Response({"status": "success", "ref_id": ref_id})

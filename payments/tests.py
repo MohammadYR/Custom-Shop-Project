@@ -33,8 +33,8 @@ def test_verify_success_marks_order_paid(monkeypatch):
     def fake_post(url, json=None, headers=None, timeout=15):
         return DummyResponse(200, {"data": {"code": 100, "ref_id": 987654}})
 
-    import payments.views as pv
-    monkeypatch.setattr(pv.requests, "post", fake_post)
+    import payments.gateway as gateway
+    monkeypatch.setattr(gateway.requests, "post", fake_post)
 
     c = APIClient()
     r = c.get(reverse("payments:payments-verify"), {"Status": "OK", "Authority": "AUTH123"})
