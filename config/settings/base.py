@@ -108,7 +108,8 @@ CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", True)
 DB_ENGINE = env_str("DB_ENGINE", "django.db.backends.postgresql")
 
 if DB_ENGINE == "django.db.backends.sqlite3":
-    DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": env_str("DB_NAME", str(BASE_DIR / "db.sqlite3"))}}
+    # DB_NAME is the PostgreSQL database name; SQLite always uses db.sqlite3.
+    DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": BASE_DIR / "db.sqlite3"}}
 else:
     DATABASES = {
         "default": {
