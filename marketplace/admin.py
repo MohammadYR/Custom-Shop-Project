@@ -4,6 +4,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from core.admin import SoftDeleteAdminMixin
+
 from .models import Seller, Store, StoreAddress, StoreItem
 
 
@@ -112,7 +113,8 @@ class StoreAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     def logo_preview(self, obj):
         if obj.logo:
             return format_html(
-                '<img src="{}" style="max-height:200px;width:auto;border:1px solid #eee;padding:4px;border-radius:6px"/>',
+                '<img src="{}" style="max-height:200px;width:auto;border:1px solid #eee;'
+                'padding:4px;border-radius:6px"/>',
                 obj.logo.url,
             )
         return "—"
@@ -134,7 +136,7 @@ class StoreItemAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
 
     @admin.display(description=_("Product"))
     def product_title(self, obj):
-        return getattr(getattr(obj, "variant", None), "product", None) and obj.variant.product.title or "—"
+        return (getattr(getattr(obj, "variant", None), "product", None) and obj.variant.product.title) or "—"
 
     # Keep a formatted price helper available for read-only contexts if needed in the future
     @admin.display(description=_("Price (formatted)"))

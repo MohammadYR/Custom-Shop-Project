@@ -1,4 +1,5 @@
 import pytest
+
 from catalog.models import Category
 
 

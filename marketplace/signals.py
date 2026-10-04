@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
-from django.db import transaction
 
 from .models import StoreItem
 from .tasks import notify_low_stock_email_task
@@ -27,11 +27,8 @@ def low_stock_alert(sender, instance: StoreItem, **kwargs):
     new_stock = instance.stock
     if new_stock is None:
         return
-    if old_stock is None:
-        # If we don't know old stock, fall back to notifying only if clearly crossing
-        should_notify = new_stock <= threshold
-    else:
-        should_notify = old_stock > threshold and new_stock <= threshold
+    # Notify only when the stock crosses the threshold (or when the old value is unknown).
+    should_notify = new_stock <= threshold and (old_stock is None or old_stock > threshold)
 
     if not should_notify:
         return

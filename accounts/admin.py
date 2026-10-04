@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.db.models import Count, Max, Q, Sum
+from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
-from django.utils import timezone
-from django.db.models import Count, Q, Sum, Max
 
 from core.admin import SoftDeleteAdminMixin
-from .models import User, Profile, Address, OTP
+
+from .models import OTP, Address, Profile, User
 
 
 class HasProfileFilter(admin.SimpleListFilter):
@@ -105,13 +106,12 @@ class CustomUserAdmin(UserAdmin):
     ordering = ("-date_joined",)
     date_hierarchy = "date_joined"
     list_editable = ("is_active", "is_staff", "is_seller")
-    fieldsets = UserAdmin.fieldsets + (
-        (
-            "Additional info",
-            {"fields": ("phone_number", "is_seller")},
-        ),
+    fieldsets = (
+        *UserAdmin.fieldsets,
+        ("Additional info", {"fields": ("phone_number", "is_seller")}),
     )
-    add_fieldsets = UserAdmin.add_fieldsets + (
+    add_fieldsets = (
+        *UserAdmin.add_fieldsets,
         (
             "Contact info",
             {"classes": ("wide",), "fields": ("email", "phone_number", "is_seller")},

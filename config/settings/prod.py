@@ -2,7 +2,7 @@
 
 from django.core.exceptions import ImproperlyConfigured
 
-from .base import *  # noqa: F401,F403
+from .base import *
 from .base import env_bool, env_int, env_list, env_str
 
 DEBUG = False
@@ -45,6 +45,6 @@ STORAGES = {
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": env_str("CACHE_URL", REDIS_URL),  # noqa: F405
+        "LOCATION": env_str("CACHE_URL", REDIS_URL),
     }
 }

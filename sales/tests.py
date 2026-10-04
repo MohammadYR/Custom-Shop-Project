@@ -1,12 +1,13 @@
-import pytest
 from decimal import Decimal
+
+import pytest
 from django.contrib.auth import get_user_model
 
+from accounts.models import Address
+from catalog.models import Category, Product, ProductVariant
+from marketplace.models import Seller, Store, StoreItem
 from sales.models import Cart, CartItem, Order, OrderItem
 from sales.services import create_order_from_cart
-from accounts.models import Address
-from marketplace.models import Seller, Store, StoreItem
-from catalog.models import Category, Product, ProductVariant
 
 
 @pytest.mark.django_db

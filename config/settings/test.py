@@ -7,13 +7,13 @@ run against in-memory SQLite instead. Redis, SMTP and network access are never
 needed.
 """
 
-from .base import *  # noqa: F401,F403
+from .base import *
 
 DEBUG = False
 SECRET_KEY = "test-secret-key-not-used-anywhere-else"
 
-if DB_ENGINE == "django.db.backends.sqlite3":  # noqa: F405
-    DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": ":memory:"}}  # noqa: F405
+if DB_ENGINE == "django.db.backends.sqlite3":
+    DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": ":memory:"}}
 
 CACHES = {
     "default": {

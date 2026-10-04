@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import uuid
 
@@ -126,10 +127,8 @@ class VerifyView(APIView):
             return Response({"status": "canceled"})
 
         if status_str != "OK":
-            try:
+            with contextlib.suppress(InvalidOrderTransition):
                 cancel_order(order)
-            except InvalidOrderTransition:
-                pass
             return Response({"status": "canceled"})
 
         try:

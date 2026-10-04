@@ -1,16 +1,17 @@
 # accounts/urls.py
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenRefreshView, TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 from .views import (
-    RegisterView,
+    AddressViewSet,
+    ChangePasswordView,
     LoginView,
     MeView,
-    ChangePasswordView,
-    AddressViewSet,
     OTPRequestView,
     OTPVerifyView,
     RegisterAsSellerView,
+    RegisterView,
 )
 
 app_name = "accounts"

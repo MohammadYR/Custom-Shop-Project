@@ -1,8 +1,9 @@
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from catalog.models import Product, Category
-from marketplace.models import Store, Seller
+
+from catalog.models import Category, Product
+from marketplace.models import Seller, Store
 
 
 @pytest.mark.django_db

@@ -4,8 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
-from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ReadOnlyModelViewSet
 
 from marketplace.models import StoreItem
@@ -26,9 +26,9 @@ from .services import (
     add_to_cart,
     cancel_order,
     cart_queryset,
-    mark_order_paid,
     create_order_from_cart,
     get_or_create_cart,
+    mark_order_paid,
     order_queryset,
     remove_cart_item,
     set_cart_item_quantity,
@@ -140,7 +140,7 @@ class CartItemViewSet(
         try:
             set_cart_item_quantity(serializer.instance, quantity)
         except CartError as exc:
-            raise ValidationError({"quantity": str(exc)})
+            raise ValidationError({"quantity": str(exc)}) from exc
 
     def perform_destroy(self, instance):
         remove_cart_item(instance)

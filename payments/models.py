@@ -1,4 +1,5 @@
 from django.db import models
+
 from core.models import BaseModel
 from sales.models import Order
 

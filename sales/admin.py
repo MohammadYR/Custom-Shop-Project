@@ -1,14 +1,15 @@
 from decimal import Decimal
 
 from django.contrib import admin
-from django.utils.translation import gettext_lazy as _
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
 from django.urls import reverse
 from django.utils.html import format_html
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Q, Count
+from django.utils.translation import gettext_lazy as _
 
 from core.admin import SoftDeleteAdminMixin
-from .models import Cart, CartItem, Order, OrderItem
-from .models import OrderItemStatus
+from payments.models import Payment
+
+from .models import Cart, CartItem, Order, OrderItem, OrderItemStatus
 from .services import (
     InvalidOrderTransition,
     cancel_order,
@@ -16,7 +17,6 @@ from .services import (
     create_order_from_cart,
     mark_order_paid,
 )
-from payments.models import Payment
 
 
 class CartItemInline(admin.TabularInline):

@@ -42,17 +42,21 @@ def test_client_uses_settings(settings):
 
 
 def test_request_rejected_raises():
-    with mock.patch(
-        "payments.gateway.requests.post", return_value=FakeResponse(200, {"data": [], "errors": {"code": -9}})
+    with (
+        mock.patch(
+            "payments.gateway.requests.post", return_value=FakeResponse(200, {"data": [], "errors": {"code": -9}})
+        ),
+        pytest.raises(ZarinpalError),
     ):
-        with pytest.raises(ZarinpalError):
-            ZarinpalClient().request_payment(amount_rial=1000, description="d")
+        ZarinpalClient().request_payment(amount_rial=1000, description="d")
 
 
 def test_network_error_raises():
-    with mock.patch("payments.gateway.requests.post", side_effect=requests.ConnectionError("boom")):
-        with pytest.raises(ZarinpalError):
-            ZarinpalClient().verify(amount_rial=1000, authority="A")
+    with (
+        mock.patch("payments.gateway.requests.post", side_effect=requests.ConnectionError("boom")),
+        pytest.raises(ZarinpalError),
+    ):
+        ZarinpalClient().verify(amount_rial=1000, authority="A")
 
 
 @pytest.mark.parametrize("code,ok", [(100, True), (101, True), (-51, False)])

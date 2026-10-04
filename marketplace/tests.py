@@ -3,8 +3,8 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.utils.text import slugify
 
-from marketplace.models import Seller, Store, StoreItem
 from catalog.models import Category, Product, ProductVariant
+from marketplace.models import Seller, Store, StoreItem
 
 
 @pytest.mark.django_db

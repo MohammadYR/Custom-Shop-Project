@@ -1,9 +1,10 @@
 import pytest
-from django.urls import reverse
-from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from accounts.models import Address, OTP
+from django.urls import reverse
+from rest_framework.test import APIClient
+
+from accounts.models import OTP, Address
 
 User = get_user_model()
 
@@ -11,10 +12,8 @@ User = get_user_model()
 @pytest.mark.django_db
 def test_register_and_login_and_me():
     """
-    Test registering a user, logging in by email (case-insensitive), and retrieving the user's information via the "me" endpoint.
-
-    The test creates a user, logs in by email, and then retrieves the user's information via the "me" endpoint.
-    Asserts that the register and login operations return a 200 or 201 status code, and that the "me" endpoint returns a 200 status code with the user's information.
+    Register a user, log in by email (case-insensitive) and read the user back
+    from the "me" endpoint.
     """
     c = APIClient()
 
@@ -87,7 +86,7 @@ def test_otp_flow():
     It checks that the OTP request is successful, and that the OTP verification returns
     an access token.
     """
-    user = User.objects.create_user(username="test", email="test@example.com", password="pass123")
+    User.objects.create_user(username="test", email="test@example.com", password="pass123")
     c = APIClient()
 
     r1 = c.post(reverse("accounts:otp_request"), {"target": "test@example.com", "purpose": "login"})
