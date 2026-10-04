@@ -1,15 +1,13 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
 from core.models import BaseModel
-# import uuid
 
 
 class User(AbstractUser):
-    # id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
     is_seller = models.BooleanField(default=False)
-    # USERNAME_FIELD = "username"
     REQUIRED_FIELDS = ["email"]
 
     def __str__(self):
@@ -17,7 +15,6 @@ class User(AbstractUser):
 
 class Profile(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    # username = models.CharField(User.USERNAME_FIELD, unique=True)
     full_name = models.CharField(max_length=120, blank=True)
     avatar = models.ImageField(upload_to="avatars/", null=True, blank=True)
 
@@ -34,9 +31,10 @@ class Address(BaseModel):
 
     class Meta:
         constraints = [
+            # One live default address per user; soft-deleted rows are ignored.
             models.UniqueConstraint(
                 fields=["user"],
-                condition=models.Q(is_default=True),
+                condition=models.Q(is_default=True, deleted_at__isnull=True),
                 name="unique_default_address_per_user",
             )
         ]
@@ -55,6 +53,8 @@ class OTP(BaseModel):
     purpose = models.CharField(max_length=20, choices=PURPOSES)
     expires_at = models.DateTimeField()
     is_used = models.BooleanField(default=False)
+    # Number of wrong codes submitted for this OTP (brute-force protection).
+    attempts = models.PositiveSmallIntegerField(default=0)
 
 
     class Meta:
