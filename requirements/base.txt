@@ -17,6 +17,7 @@ python-dotenv==1.1.1
 requests==2.32.5
 kavenegar==1.1.2
 gunicorn==23.0.0
+whitenoise==6.9.0
 
 # Pinned transitive dependencies
 amqp==5.3.1

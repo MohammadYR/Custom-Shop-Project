@@ -63,6 +63,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -142,6 +143,9 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+# Let Django serve uploaded files when DEBUG is off (no separate web server in
+# docker-compose). Put a CDN / nginx in front for real production traffic.
+SERVE_MEDIA = env_bool("SERVE_MEDIA", False)
 
 
 # ---------------------------------------------------------------------------
