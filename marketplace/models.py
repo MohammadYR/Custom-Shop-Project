@@ -1,4 +1,7 @@
+from decimal import ROUND_HALF_UP, Decimal
+
 from django.conf import settings
+from django.core.validators import MaxValueValidator
 from django.db import models
 from django.db.models import Q
 
@@ -85,11 +88,14 @@ class StoreItem(BaseModel):
     variant = models.ForeignKey("catalog.ProductVariant", on_delete=models.PROTECT, related_name="store_items")
     sku = models.CharField(max_length=64, help_text="A unique identifier for this product in the store")
     price = models.DecimalField(max_digits=12, decimal_places=2)
+    # Simple per-offer discount: the buyer pays price * (100 - discount_percent) / 100.
+    discount_percent = models.PositiveSmallIntegerField(default=0, validators=[MaxValueValidator(100)])
     stock = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 
     class Meta:
         constraints = [
+            models.CheckConstraint(condition=Q(discount_percent__lte=100), name="storeitem_discount_0_100"),
             # Soft-deleted items must not block re-listing the same variant/SKU.
             models.UniqueConstraint(
                 fields=["store", "variant"],
@@ -110,3 +116,12 @@ class StoreItem(BaseModel):
 
     def __str__(self):
         return f"{self.store.name} · {self.variant} · {self.sku}"
+
+    @property
+    def final_price(self) -> Decimal:
+        """Price after the store's discount, rounded to 2 decimals."""
+        price = Decimal(self.price)
+        if not self.discount_percent:
+            return price
+        discounted = price * (Decimal(100) - Decimal(self.discount_percent)) / Decimal(100)
+        return discounted.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

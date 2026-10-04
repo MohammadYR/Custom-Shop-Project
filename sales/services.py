@@ -177,11 +177,17 @@ def create_order_from_cart(cart: Cart) -> Order:
 
     OrderItem.objects.bulk_create(
         [
-            OrderItem(order=order, store_item=locked[pk], unit_price=locked[pk].price, quantity=quantity)
+            OrderItem(
+                order=order,
+                store_item=locked[pk],
+                unit_price=locked[pk].final_price,
+                original_unit_price=locked[pk].price,
+                quantity=quantity,
+            )
             for pk, quantity in quantities.items()
         ]
     )
-    total = sum((locked[pk].price * quantity for pk, quantity in quantities.items()))
+    total = sum((locked[pk].final_price * quantity for pk, quantity in quantities.items()))
     # bulk_create sends no post_save signals, so set the payment amount explicitly.
     Payment.objects.update_or_create(
         order=order, defaults={"amount": total, "provider": order.payment_gateway or "zarinpal"}

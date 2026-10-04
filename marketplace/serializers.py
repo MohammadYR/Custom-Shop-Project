@@ -47,14 +47,21 @@ class StoreSerializer(serializers.ModelSerializer):
 class StoreItemSerializer(serializers.ModelSerializer):
     variant_detail = ProductVariantSerializer(source="variant", read_only=True)
     store_name = serializers.CharField(source="store.name", read_only=True)
+    product = serializers.UUIDField(source="variant.product_id", read_only=True)
+    final_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    discount_price = serializers.SerializerMethodField(help_text="final_price when a discount applies, else null")
 
     class Meta:
         model = StoreItem
         fields = [
-            "id", "store", "store_name", "variant", "variant_detail",
-            "sku", "price", "stock", "is_active", "created_at", "updated_at",
+            "id", "store", "store_name", "product", "variant", "variant_detail",
+            "sku", "price", "discount_percent", "final_price", "discount_price",
+            "stock", "is_active", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_discount_price(self, obj) -> str | None:
+        return str(obj.final_price) if obj.discount_percent else None
 
     def validate_store(self, store):
         if self.instance is not None and store != self.instance.store:

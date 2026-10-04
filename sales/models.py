@@ -22,7 +22,16 @@ class Cart(BaseModel):
 
     @property
     def total_price(self):
+        """Amount to pay, after discounts."""
         return sum((item.subtotal for item in self.items.all()), start=Decimal("0"))
+
+    @property
+    def total_original_price(self):
+        return sum((item.original_subtotal for item in self.items.all()), start=Decimal("0"))
+
+    @property
+    def total_discount(self):
+        return self.total_original_price - self.total_price
 
 
 class CartItem(BaseModel):
@@ -45,15 +54,28 @@ class CartItem(BaseModel):
         return f"{self.cart_id} · {self.store_item_id} · {self.quantity}"
 
     @property
-    def price(self):
+    def original_price(self):
         price = getattr(self.store_item, "price", None)
-        if price is None:
+        return Decimal(price) if price is not None else Decimal("0")
+
+    @property
+    def price(self):
+        """Unit price after the store item's discount."""
+        if getattr(self.store_item, "price", None) is None:
             return Decimal("0")
-        return Decimal(price)
+        return self.store_item.final_price
 
     @property
     def subtotal(self):
         return Decimal(self.quantity) * self.price
+
+    @property
+    def original_subtotal(self):
+        return Decimal(self.quantity) * self.original_price
+
+    @property
+    def discount(self):
+        return self.original_subtotal - self.subtotal
 
 
 class OrderStatus(models.TextChoices):
@@ -92,6 +114,10 @@ class Order(BaseModel):
     def total_items(self):
         return sum((item.quantity for item in self.items.all()), start=0)
 
+    @property
+    def total_discount(self):
+        return sum((item.discount for item in self.items.all()), start=Decimal("0"))
+
     def delete(self, *args, **kwargs):
         raise NotImplementedError("Order records cannot be deleted.")
 
@@ -99,8 +125,10 @@ class Order(BaseModel):
 class OrderItem(BaseModel):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     store_item = models.ForeignKey("marketplace.StoreItem", on_delete=models.PROTECT, related_name="order_items")
-    # Price snapshot at the time the order was placed.
+    # Price snapshot at the time the order was placed (after discount = what is charged).
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    # List price before the discount, for display; null on orders placed before discounts existed.
+    original_unit_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)], default=1)
 
     class Meta:
@@ -115,3 +143,9 @@ class OrderItem(BaseModel):
     def subtotal(self):
         unit_price = self.unit_price if self.unit_price is not None else Decimal("0")
         return Decimal(self.quantity) * unit_price
+
+    @property
+    def discount(self):
+        if self.original_unit_price is None or self.unit_price is None:
+            return Decimal("0")
+        return Decimal(self.quantity) * (self.original_unit_price - self.unit_price)
