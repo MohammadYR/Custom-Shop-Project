@@ -45,3 +45,33 @@ jobs:
         with:
           name: coverage-xml
           path: coverage.xml
+
+  docker:
+    # Builds the image and checks that the compose stack (prod settings,
+    # gunicorn, Postgres, Redis) becomes healthy.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env for the smoke test
+        run: |
+          cp .env.example .env
+          sed -i "s|^DJANGO_SECRET_KEY=.*|DJANGO_SECRET_KEY=ci-$(openssl rand -hex 32)|" .env
+          sed -i "s|^DJANGO_SETTINGS_MODULE=.*|DJANGO_SETTINGS_MODULE=config.settings.prod|" .env
+
+      - name: Start the stack and wait for healthchecks
+        run: docker compose up -d --build --wait --wait-timeout 240 web
+
+      - name: Smoke test
+        run: |
+          curl -fsS http://localhost:8000/health/
+          curl -fsS http://localhost:8000/api/products/ > /dev/null
+          curl -fsS http://localhost:8000/api/schema/ > /dev/null
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
