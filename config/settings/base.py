@@ -347,6 +347,12 @@ SPECTACULAR_SETTINGS = {
         {"name": "Reviews", "description": "Product and store reviews"},
         {"name": "Admin", "description": "Administrative and back-office endpoints"},
     ],
+    "ENUM_NAME_OVERRIDES": {
+        "OrderStatusEnum": "sales.models.OrderStatus",
+        "OrderItemStatusEnum": "sales.models.OrderItemStatus",
+        "PaymentStatusEnum": "payments.models.Payment.STATUS",
+        "VerifyResultStatusEnum": ["success", "failed", "canceled"],
+    },
     "POSTPROCESSING_HOOKS": [
         "drf_spectacular.hooks.postprocess_schema_enums",
 
