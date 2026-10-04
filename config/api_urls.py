@@ -7,6 +7,13 @@ from rest_framework.routers import DefaultRouter
 
 from accounts.views import AddressViewSet, AdminUserViewSet, MyUserView, RegisterAsSellerView
 from catalog.views import AdminCategoryViewSet, PublicCategoryViewSet, PublicProductViewSet
+from marketplace.seller_views import (
+    MyStoreAddressViewSet,
+    MyStoreItemViewSet,
+    MyStoreOrderItemViewSet,
+    MyStoreOrderViewSet,
+    MyStoreView,
+)
 from marketplace.views import PublicStoreViewSet
 
 router = DefaultRouter(trailing_slash=True)
@@ -22,8 +29,15 @@ router.register(r"admin/categories", AdminCategoryViewSet, basename="admin-categ
 router.register(r"products", PublicProductViewSet, basename="product")
 router.register(r"stores", PublicStoreViewSet, basename="store")
 
+# Seller area
+router.register(r"mystore/addresses", MyStoreAddressViewSet, basename="mystore-address")
+router.register(r"mystore/items", MyStoreItemViewSet, basename="mystore-item")
+router.register(r"mystore/orders", MyStoreOrderViewSet, basename="mystore-order")
+router.register(r"mystore/order-items", MyStoreOrderItemViewSet, basename="mystore-order-item")
+
 urlpatterns = [
     path("myuser/", MyUserView.as_view(), name="myuser"),
+    path("mystore/", MyStoreView.as_view(), name="mystore"),
     path("myuser/register_as_seller/", RegisterAsSellerView.as_view(), name="myuser-register-as-seller"),
     path("", include(router.urls)),
 ]
