@@ -4,7 +4,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from core.admin import SoftDeleteAdminMixin
-from .models import Category, Product, ProductVariant
+from .models import Category, Product, ProductImage, ProductVariant
 
 
 class ProductVariantInline(admin.TabularInline):
@@ -13,6 +13,13 @@ class ProductVariantInline(admin.TabularInline):
     show_change_link = True
     fields = ("name", "is_active", "attributes")
     ordering = ("name",)
+
+
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 0
+    fields = ("image", "alt_text", "sort_order")
+    ordering = ("sort_order",)
 
 
 @admin.register(Product)
@@ -43,7 +50,7 @@ class ProductAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     list_filter = ("is_active", HasImageFilter, "category", "created_at")
     search_fields = ("title", "slug", "category__name")
     prepopulated_fields = {"slug": ("title",)}
-    inlines = (ProductVariantInline,)
+    inlines = (ProductImageInline, ProductVariantInline)
     list_select_related = ("category",)
     readonly_fields = ("image_preview", "created_at", "updated_at", "deleted_at")
     ordering = ("title",)
