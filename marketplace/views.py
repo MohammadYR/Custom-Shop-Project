@@ -1,10 +1,15 @@
+from django.db import transaction
 from rest_framework import decorators, response, status
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.viewsets import ModelViewSet
+
 from .models import Seller, Store, StoreItem
-from .serializers import SellerSerializer, StoreSerializer, StoreItemSerializer
 from .permissions import IsOwnerOrReadOnly
+from .serializers import SellerSerializer, StoreItemSerializer, StoreSerializer
+
+SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
+
 
 class SellerViewSet(ModelViewSet):
     queryset = Seller.objects.select_related("user").all()
@@ -15,23 +20,15 @@ class SellerViewSet(ModelViewSet):
             return [AllowAny()]
         return [IsAuthenticated(), IsOwnerOrReadOnly()]
 
-    # def perform_create(self, serializer):
-    #     # هر کاربر فقط یک seller
-    #     if hasattr(self.request.user, "seller_profile"):
-    #         raise PermissionDenied("You already have a seller profile.")
-    #     serializer.save(user=self.request.user)
+    @transaction.atomic
     def perform_create(self, serializer):
-        if hasattr(self.request.user, "seller_profile"):
+        user = self.request.user
+        if Seller.all_objects.filter(user=user).exists():
             raise PermissionDenied("You already have a seller profile.")
-        obj = serializer.save(user=self.request.user)
-        # پرچم کاربر را هم‌زمان درست کنیم
-        if not self.request.user.is_seller:
-            self.request.user.is_seller = True
-            self.request.user.save(update_fields=["is_seller"])
-        return obj
-    def get_queryset(self):
-        # خواندن برای همه آزاد است (فهرست عمومی)
-        return super().get_queryset()
+        serializer.save(user=user)
+        if not user.is_seller:
+            user.is_seller = True
+            user.save(update_fields=["is_seller"])
 
 
 class StoreViewSet(ModelViewSet):
@@ -43,46 +40,34 @@ class StoreViewSet(ModelViewSet):
             return [AllowAny()]
         return [IsAuthenticated(), IsOwnerOrReadOnly()]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Writes only ever see the requesting seller's own stores.
+        if self.request.method not in SAFE_METHODS:
+            seller = getattr(self.request.user, "seller_profile", None)
+            return qs.filter(owner=seller) if seller else qs.none()
+        return qs
+
     def perform_create(self, serializer):
         seller = getattr(self.request.user, "seller_profile", None)
         if not seller:
             raise PermissionDenied("Create a seller profile first.")
         serializer.save(owner=seller)
 
-    # def get_queryset(self):
-    #     qs = super().get_queryset()
-    #     # برای عملیات write، فقط فروشگاه‌های مالک را نشان بده
-    #     if self.request.method not in ("GET", "HEAD", "OPTIONS") and self.request.user.is_authenticated:
-    #         seller = getattr(self.request.user, "seller_profile", None)
-    #         if seller:
-    #             return qs.filter(owner=seller)
-    #         return qs.none()
-    def get_queryset(self):
-        qs = super().get_queryset()
-        p = self.request.path
-        if p.startswith("/api/marketplace/..//stores"):
-            if self.request.user.is_authenticated:
-                seller = getattr(self.request.user, "seller_profile", None)
-                return qs.filter(owner=seller) if seller else qs.none()
-            return qs.none()
-        if self.request.method not in ("GET", "HEAD", "OPTIONS") and self.request.user.is_authenticated:
-            seller = getattr(self.request.user, "seller_profile", None)
-            if seller:
-                return qs.filter(owner=seller)
-            return qs.none()
-        return qs
-
-    @decorators.action(detail=False, methods=["get"], url_path="mine")
+    @decorators.action(detail=False, methods=["get"], url_path="mine", permission_classes=[IsAuthenticated])
     def mine(self, request):
         seller = getattr(request.user, "seller_profile", None)
         if not seller:
             return response.Response({"detail": "Not a seller."}, status=status.HTTP_403_FORBIDDEN)
         qs = self.get_queryset().filter(owner=seller)
-        ser = self.get_serializer(qs, many=True)
-        return response.Response(ser.data)
+        return response.Response(self.get_serializer(qs, many=True).data)
+
 
 class StoreItemViewSet(ModelViewSet):
-    queryset = StoreItem.objects.select_related("store", "store__owner", "store__owner__user", "product", "variant", "variant__product").all()
+    # StoreItem has no ``product`` FK; selecting it made every list request fail with a 500.
+    queryset = StoreItem.objects.select_related(
+        "store", "store__owner", "store__owner__user", "variant", "variant__product"
+    ).all()
     serializer_class = StoreItemSerializer
 
     def get_permissions(self):
@@ -90,18 +75,9 @@ class StoreItemViewSet(ModelViewSet):
             return [AllowAny()]
         return [IsAuthenticated(), IsOwnerOrReadOnly()]
 
-    def perform_create(self, serializer):
-        store = serializer.validated_data.get("store")
-        seller = getattr(self.request.user, "seller_profile", None)
-        if not seller or store.owner_id != seller.id:
-            raise PermissionDenied("You can only add items to your own store.")
-        serializer.save()
-
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.method not in ("GET", "HEAD", "OPTIONS") and self.request.user.is_authenticated:
+        if self.request.method not in SAFE_METHODS:
             seller = getattr(self.request.user, "seller_profile", None)
-            if seller:
-                return qs.filter(store__owner=seller)
-            return qs.none()
+            return qs.filter(store__owner=seller) if seller else qs.none()
         return qs
