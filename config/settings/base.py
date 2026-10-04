@@ -207,6 +207,7 @@ KAVENEGAR_SENDER = env_str("KAVENEGAR_SENDER", "")
 # Django REST framework / JWT / OpenAPI
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),

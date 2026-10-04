@@ -11,12 +11,16 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
+from core.exceptions import DomainError
+
 from .models import OTP
 from .tasks import send_otp_email_task, send_otp_sms_task
 
 
-class OTPError(Exception):
+class OTPError(DomainError):
     """Raised when an OTP cannot be verified."""
+
+    default_code = "invalid_otp"
 
 
 @dataclass(frozen=True)

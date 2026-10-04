@@ -17,6 +17,7 @@ from django.db import transaction
 from django.db.models import F, Prefetch
 from django.utils import timezone
 
+from core.exceptions import DomainError
 from marketplace.models import StoreItem
 from marketplace.tasks import notify_low_stock_email_task
 
@@ -34,16 +35,22 @@ ALLOWED_TRANSITIONS: dict[str, set[str]] = {
 }
 
 
-class CartError(ValueError):
+class CartError(DomainError):
     """Invalid cart operation (inactive item, not enough stock...)."""
 
+    default_code = "cart_error"
 
-class CheckoutError(ValueError):
+
+class CheckoutError(DomainError):
     """The cart cannot be turned into an order."""
 
+    default_code = "checkout_error"
 
-class InvalidOrderTransition(ValueError):
+
+class InvalidOrderTransition(DomainError):
     """The requested status change is not allowed by the state machine."""
+
+    default_code = "invalid_transition"
 
 
 ITEM_TRANSITIONS: dict[str, set[str]] = {

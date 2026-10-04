@@ -1,7 +1,6 @@
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -20,9 +19,6 @@ from .serializers import (
     OrderSerializer,
 )
 from .services import (
-    CartError,
-    CheckoutError,
-    InvalidOrderTransition,
     add_to_cart,
     cancel_order,
     cart_queryset,
@@ -60,10 +56,7 @@ class CartViewSet(GenericViewSet):
     def add_item(self, request):
         ser = CartAddItemSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        try:
-            add_to_cart(user=request.user, **ser.validated_data)
-        except CartError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        add_to_cart(user=request.user, **ser.validated_data)
         return _cart_response(request.user)
 
     @extend_schema(
@@ -86,10 +79,7 @@ def checkout_response(request):
         address = Address.objects.filter(pk=ser.validated_data["address"], user=request.user).first()
         if address is None:
             return Response({"address": ["Address not found."]}, status=status.HTTP_400_BAD_REQUEST)
-    try:
-        order = create_order_from_cart(get_or_create_cart(request.user), address=address)
-    except CheckoutError as exc:
-        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    order = create_order_from_cart(get_or_create_cart(request.user), address=address)
     order = order_queryset().get(pk=order.pk)
     data = OrderSerializer(order).data
     # Next step for the client: start the payment for this order.
@@ -125,22 +115,16 @@ class CartItemViewSet(
     def create(self, request, *args, **kwargs):
         ser = self.get_serializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        try:
-            item = add_to_cart(
-                user=request.user,
-                store_item=ser.validated_data["store_item"],
-                quantity=ser.validated_data["quantity"],
-            )
-        except CartError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        item = add_to_cart(
+            user=request.user,
+            store_item=ser.validated_data["store_item"],
+            quantity=ser.validated_data["quantity"],
+        )
         return Response(self.get_serializer(item).data, status=status.HTTP_201_CREATED)
 
     def perform_update(self, serializer):
         quantity = serializer.validated_data.get("quantity", serializer.instance.quantity)
-        try:
-            set_cart_item_quantity(serializer.instance, quantity)
-        except CartError as exc:
-            raise ValidationError({"quantity": str(exc)}) from exc
+        set_cart_item_quantity(serializer.instance, quantity)
 
     def perform_destroy(self, instance):
         remove_cart_item(instance)
@@ -162,10 +146,7 @@ class OrderViewSet(ReadOnlyModelViewSet):
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         order = self.get_object()
-        try:
-            cancel_order(order)
-        except InvalidOrderTransition as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        cancel_order(order)
         return Response(OrderSerializer(order_queryset().get(pk=order.pk)).data)
 
 
@@ -215,10 +196,7 @@ class AddToCartView(APIView):
         store_item = get_object_or_404(StoreItem.objects.select_related("store"), pk=store_item_id, is_active=True)
         ser = AddToCartSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        try:
-            add_to_cart(user=request.user, store_item=store_item, quantity=ser.validated_data["quantity"])
-        except CartError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        add_to_cart(user=request.user, store_item=store_item, quantity=ser.validated_data["quantity"])
         return _cart_response(request.user)
 
 
@@ -252,10 +230,7 @@ class AdminOrderViewSet(ReadOnlyModelViewSet):
 
     def _transition(self, service):
         order = self.get_object()
-        try:
-            service(order)
-        except InvalidOrderTransition as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        service(order)
         return Response(OrderSerializer(order_queryset().get(pk=order.pk)).data)
 
     @extend_schema(request=None, responses={200: OrderSerializer})

@@ -8,7 +8,7 @@ from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelV
 
 from sales.models import OrderItem, OrderItemStatus
 from sales.serializers import OrderItemSerializer
-from sales.services import InvalidOrderTransition, seller_change_order_item_status, seller_orders_queryset
+from sales.services import seller_change_order_item_status, seller_orders_queryset
 
 from .models import Seller, Store, StoreAddress, StoreItem
 from .serializers import StoreAddressSerializer, StoreItemSerializer, StoreSerializer
@@ -173,10 +173,5 @@ class MyStoreOrderItemViewSet(SellerMixin, mixins.ListModelMixin, mixins.Retriev
         item = self.get_object()
         ser = OrderItemStatusSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        try:
-            item = seller_change_order_item_status(
-                seller=self.seller, item=item, new_status=ser.validated_data["status"]
-            )
-        except InvalidOrderTransition as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        item = seller_change_order_item_status(seller=self.seller, item=item, new_status=ser.validated_data["status"])
         return Response(OrderItemSerializer(self.get_queryset().get(pk=item.pk)).data)
