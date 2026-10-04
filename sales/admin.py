@@ -8,7 +8,8 @@ from django.utils.html import format_html
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Q, Count
 
 from core.admin import SoftDeleteAdminMixin
-from .models import Cart, CartItem, Order, OrderItem, create_order_from_cart
+from .models import Cart, CartItem, Order, OrderItem
+from .services import create_order_from_cart
 from payments.models import Payment
 
 

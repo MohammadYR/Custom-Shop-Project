@@ -2,7 +2,8 @@ import pytest
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 
-from sales.models import Cart, CartItem, Order, OrderItem, create_order_from_cart
+from sales.models import Cart, CartItem, Order, OrderItem
+from sales.services import create_order_from_cart
 from marketplace.models import Seller, Store, StoreItem
 from catalog.models import Category, Product, ProductVariant
 
