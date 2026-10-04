@@ -2,14 +2,13 @@ from decimal import Decimal
 
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from django.utils import timezone
 from django.urls import reverse
 from django.utils.html import format_html
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Q, Count
 
 from core.admin import SoftDeleteAdminMixin
 from .models import Cart, CartItem, Order, OrderItem
-from .services import create_order_from_cart
+from .services import InvalidOrderTransition, cancel_order, create_order_from_cart, mark_order_paid
 from payments.models import Payment
 
 
@@ -47,9 +46,12 @@ class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
     fields = ("store_item", "unit_price", "quantity", "subtotal_display")
-    readonly_fields = ("subtotal_display",)
+    # Order items are an immutable snapshot created by checkout.
+    readonly_fields = ("store_item", "unit_price", "quantity", "subtotal_display")
     can_delete = False
-    autocomplete_fields = ("store_item",)
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
     @admin.display(description="Subtotal")
     def subtotal_display(self, obj):
@@ -89,7 +91,7 @@ class CartAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     def action_clear_items(self, request, queryset):
         total_deleted = 0
         for cart in queryset:
-            deleted, _ = cart.items.all().delete()
+            deleted, _ = cart.items.all().hard_delete()
             total_deleted += deleted
         self.message_user(request, _("Removed {} items from selected carts.").format(total_deleted))
 
@@ -101,7 +103,7 @@ class CartAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
             try:
                 create_order_from_cart(cart)
                 created += 1
-            except Exception as e:
+            except ValueError:
                 failed += 1
         msg = _("{} orders created. {} failed.").format(created, failed)
         self.message_user(request, msg)
@@ -178,6 +180,7 @@ class OrderAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     date_hierarchy = "created_at"
     autocomplete_fields = ("user",)
     readonly_fields = (
+        "status",  # change it with the actions, which run the state machine
         "total_items",
         "total_price",
         "payment_authority",
@@ -256,20 +259,27 @@ class OrderAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
             created += 1
         self.message_user(request, _("{} payments created.").format(created))
 
+    def _run_transition(self, request, queryset, service, label):
+        done, skipped = 0, 0
+        for order in queryset:
+            try:
+                service(order)
+                done += 1
+            except InvalidOrderTransition:
+                skipped += 1
+        self.message_user(
+            request, _("{} orders marked as {}. {} skipped (not PENDING).").format(done, label, skipped)
+        )
+
     @admin.action(description=_("Mark selected orders as PAID"))
     def mark_paid(self, request, queryset):
-        now = timezone.now()
-        updated = queryset.update(status="PAID", paid_at=now)
-        # Sync any related payments to VERIFIED
-        payments_updated = Payment.objects.filter(order__in=queryset).update(status="VERIFIED", paid_at=now)
-        self.message_user(request, _("{} orders marked as PAID. {} payments verified.").format(updated, payments_updated))
+        # Goes through the state machine: sets paid_at, verifies the payment, sends emails.
+        self._run_transition(request, queryset, mark_order_paid, "PAID")
 
     @admin.action(description=_("Mark selected orders as CANCELLED"))
     def mark_cancelled(self, request, queryset):
-        updated = queryset.update(status="CANCELLED")
-        # Mark related payments as FAILED (don’t override VERIFIED)
-        payments_updated = Payment.objects.filter(order__in=queryset).exclude(status="VERIFIED").update(status="FAILED")
-        self.message_user(request, _("{} orders marked as CANCELLED. {} payments failed.").format(updated, payments_updated))
+        # Goes through the state machine: restocks once, fails the payment, sends emails.
+        self._run_transition(request, queryset, cancel_order, "CANCELLED")
 
 
 @admin.register(OrderItem)
