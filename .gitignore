@@ -14,6 +14,12 @@ config/staticfiles/
 .claude/
 graphify-out/
 
+# --- Kept out of the repo for now ---
+# Course brief (Persian PDF) and the frontend, which will be added later
+/*.pdf
+frontend/
+frontend.zip
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
