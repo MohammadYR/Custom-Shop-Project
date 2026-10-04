@@ -229,77 +229,39 @@ SIMPLE_JWT = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Custom Shop Backend",
     "DESCRIPTION": """
-    راهنمای استفاده از API (Swagger)
+راهنمای استفاده از API — Custom Shop (کاستومی)
 
-    1) احراز هویت در Swagger
-    - روی دکمه Authorize کلیک کنید و مقدار زیر را وارد کنید:
-      Bearer <ACCESS_TOKEN>
-    - برای گرفتن توکن: مسیر Auth → Login را اجرا کنید و خروجی `access` را استفاده کنید.
+1) احراز هویت
+- POST /api/accounts/register/ → ثبت‌نام
+- POST /api/accounts/login/ {"identifier": "<email|username|phone>", "password": "..."} → access / refresh
+- POST /api/accounts/token/refresh/ {"refresh": "..."}
+- POST /api/accounts/request-otp/ {"target": "<email|phone>", "purpose": "login"}
+- POST /api/accounts/verify-otp/ {"target": "...", "code": "123456", "purpose": "login"} → JWT
+- در Swagger روی Authorize بزنید و مقدار «Bearer <access>» را وارد کنید.
 
+2) کاربر
+- /api/myuser/ مشاهده، ویرایش و غیرفعال‌سازی حساب + سفارش‌های اخیر
+- /api/myuser/address/ مدیریت آدرس‌ها
+- /api/myuser/register_as_seller/ تبدیل به فروشنده و ساخت فروشگاه
 
-    2) سناریوهای رایج
-    - ثبت‌نام و ورود (JWT):
-      - POST /api/accounts/register/
-        {
-          "username": "ali",
-          "email": "ali@example.com",
-          "phone_number": "09120000000",
-          "password": "StrongPass123!"
-        }
-      - POST /api/accounts/login/
-        {"identifier": "ali", "password": "StrongPass123!"}
-      - سپس Authorize را با مقدار access انجام دهید.
+3) فروشگاه و کالا
+- /api/categories/ ، /api/products/ (search, filter, ordering, pagination) ، /api/stores/
+- /api/products/{id}/review_create/ و /api/stores/{id}/review_create/
+- /api/mystore/ (فروشنده): فروشگاه، آدرس‌ها، کالاها، سفارش‌ها و تغییر وضعیت آیتم سفارش
 
+4) خرید
+- /api/mycart/ ، /api/mycart/add_to_cart/{store_item_id}/ ، /api/mycart/items/
+- POST /api/orders/checkout/ {"address": "<id>"} → سفارش + payment_url
+- /api/myorders/ تاریخچه سفارش‌ها و لغو سفارش در وضعیت PENDING
+- POST /api/payments/{order_id}/start/ → startpay_url زرین‌پال
+- GET /api/payments/verify/?Authority=...&Status=OK → تایید پرداخت (ایدمپوتنت)
 
-    - ورود با OTP (اختیاری):
-      - POST /api/accounts/otp/request/
-        {"target": "ali@example.com", "purpose": "login"}
-      - POST /api/accounts/otp/verify/
-        {"target": "ali@example.com", "code": "123456", "purpose": "login"}
+5) مدیریت (staff)
+- /api/admin/users/ ، /api/admin/categories/ ، /api/orders/ ، /api/payments/
 
-
-    - تبدیل به فروشنده و ساخت فروشگاه:
-      - POST /api/accounts/me/register_as_seller/
-        {"display_name": "My Seller", "store": {"name": "My Shop", "description": "..."}}
-      - یا بعداً از /api/marketplace/stores/ برای ایجاد فروشگاه جدید استفاده کنید.
-
-      
-    - کاتالوگ و موجودی فروشگاه:
-      - POST /api/catalog/categories/ → ساخت دسته
-      - POST /api/catalog/products/ → ساخت محصول (با category)
-      - POST /api/catalog/product-variants/ → ساخت واریانت محصول
-      - POST /api/marketplace/items/ → ثبت کالا در فروشگاه با sku/price/stock
-
-
-    - سبد خرید و سفارش:
-      - GET /api/sales/cart/ → مشاهده سبد (اتوماتیک ساخته می‌شود)
-      - POST /api/sales/cart/add-item/
-        {"store_item": "<UUID>", "quantity": 2}
-      - POST /api/sales/cart/checkout/ → ساخت Order از Cart
-
-
-    - پرداخت (Sandbox زرین‌پال):
-      - POST /api/payments/start/{order_id}/ → گرفتن startpay_url
-      - GET  /api/payments/verify/?Authority=...&Status=OK → تایید پرداخت
-      توضیح: در صورت استفاده از Status=FAILED/CANCELLED وضعیت سفارش CANCELED می‌شود.
-
-      
-
-    3) رویدادها و سیگنال‌ها (Behavior):
-    - ساخت Cart خودکار: بعد از ثبت‌نام کاربر
-    - Address پیش‌فرض تکی: هنگام ذخیره آدرس جدید با is_default=True
-    - همگام‌سازی Payment: با تغییر آیتم‌های سفارش یا authority/amount
-    - تغییر وضعیت سفارش:
-      - PAID: paid_at ست می‌شود و ایمیل اطلاع‌رسانی صف می‌شود
-      - CANCELLED: موجودی اقلام سفارش به انبار برمی‌گردد
-    - هشدار کمبود موجودی: با عبور stock از آستانه تعریف‌شده (INVENTORY_LOW_STOCK_THRESHOLD)
-
-    
-
-    4) نکات تست سریع
-    - برای مسیرهای نیازمند احراز هویت، ابتدا Authorize کنید.
-    - در محیط توسعه، پاسخ OTP ممکن است شامل کد باشد (صرفاً برای راحتی تست).
-    - در پرداخت Sandbox، نیازمند دسترسی شبکه هستید؛ در غیر این صورت می‌توانید Verify با Status=FAILED را برای سناریوی لغو تست کنید.
+وضعیت سفارش: PENDING → PAID یا PENDING → CANCELLED (لغو، موجودی را فقط یک‌بار برمی‌گرداند).
+وضعیت آیتم سفارش: PENDING → SHIPPED → DELIVERED یا PENDING → CANCELLED.
+همه لیست‌ها صفحه‌بندی دارند: ?page=2&page_size=50
     """,
     "VERSION": "1.0.0",
     "TOS": "https://example.com/terms",
