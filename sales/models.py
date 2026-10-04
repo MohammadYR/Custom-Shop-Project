@@ -108,8 +108,8 @@ class Order(BaseModel):
     shipping_postal_code = models.CharField(max_length=20, blank=True)
 
     payment_gateway = models.CharField(max_length=32, blank=True, default="zarinpal")
-    payment_authority = models.CharField(max_length=64, blank=True, null=True)
-    payment_ref_id = models.CharField(max_length=64, blank=True, null=True)
+    payment_authority = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    payment_ref_id = models.CharField(max_length=64, blank=True, default="")
     paid_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
