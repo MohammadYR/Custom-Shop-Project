@@ -32,11 +32,17 @@ def make_user(db):
 
     User = get_user_model()
 
-    def _make(username=None, password="StrongPass123!", **extra):
+    def _make(username=None, password="StrongPass123!", with_address=True, **extra):
+        from accounts.models import Address
+
         n = next(_counter)
         username = username or f"user{n}"
         extra.setdefault("email", f"{username}@example.com")
-        return User.objects.create_user(username=username, password=password, **extra)
+        user = User.objects.create_user(username=username, password=password, **extra)
+        if with_address:  # checkout needs a shipping address
+            Address.objects.create(user=user, line1=f"Street {n}", city="Tehran", postal_code="1234567890",
+                                   is_default=True)
+        return user
 
     return _make
 

@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db.models import Q
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -101,6 +102,61 @@ class UserMeSerializer(serializers.ModelSerializer):
         return _validate_unique_ci("email", value, instance=self.instance)
 
 
+class OrderSummarySerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    status = serializers.CharField()
+    total_items = serializers.IntegerField()
+    total_price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    created_at = serializers.DateTimeField()
+    paid_at = serializers.DateTimeField(allow_null=True)
+
+
+class MyUserSerializer(UserMeSerializer):
+    """GET/PATCH /api/myuser/: profile plus the latest orders (full history at /api/myorders/)."""
+
+    RECENT_ORDERS = 5
+
+    full_name = serializers.CharField(source="profile.full_name", required=False, allow_blank=True, max_length=120)
+    orders_count = serializers.SerializerMethodField()
+    recent_orders = serializers.SerializerMethodField()
+
+    class Meta(UserMeSerializer.Meta):
+        fields = ("id", "username", "email", "phone_number", "first_name", "last_name", "full_name",
+                  "is_seller", "date_joined", "orders_count", "recent_orders")
+        read_only_fields = ("id", "username", "is_seller", "date_joined")
+
+    def get_orders_count(self, obj) -> int:
+        return obj.orders.count()
+
+    @extend_schema_field(OrderSummarySerializer(many=True))
+    def get_recent_orders(self, obj):
+        orders = obj.orders.prefetch_related("items").order_by("-created_at")[: self.RECENT_ORDERS]
+        return OrderSummarySerializer(orders, many=True).data
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop("profile", None)
+        instance = super().update(instance, validated_data)
+        if profile_data is not None:
+            Profile.objects.update_or_create(user=instance, defaults=profile_data)
+        return instance
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    """Staff-only user management."""
+
+    class Meta:
+        model = User
+        fields = ("id", "username", "email", "phone_number", "first_name", "last_name", "is_active",
+                  "is_staff", "is_seller", "date_joined", "last_login")
+        read_only_fields = ("id", "date_joined", "last_login")
+
+    def validate_username(self, value):
+        return _validate_unique_ci("username", value, instance=self.instance)
+
+    def validate_email(self, value):
+        return _validate_unique_ci("email", value, instance=self.instance)
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True, min_length=8)
@@ -138,13 +194,32 @@ class AddressCreateUpdateSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class OTPRequestSerializer(serializers.Serializer):
-    target = serializers.CharField(required=True, max_length=120)
+class _AliasMixin:
+    """Accept the field names the frontend sends (username -> target, password -> code)."""
+
+    aliases: dict = {}
+
+    def to_internal_value(self, data):
+        if hasattr(data, "dict"):
+            data = data.dict()
+        data = dict(data)
+        for alias, field in self.aliases.items():
+            if field not in data and alias in data:
+                data[field] = data[alias]
+        return super().to_internal_value(data)
+
+
+class OTPRequestSerializer(_AliasMixin, serializers.Serializer):
+    aliases = {"username": "target"}
+
+    target = serializers.CharField(required=True, max_length=120, help_text="Email or phone number")
     purpose = serializers.ChoiceField(choices=OTP.PURPOSES, default="login")
 
 
-class OTPVerifySerializer(serializers.Serializer):
-    target = serializers.CharField(required=True, max_length=120)
+class OTPVerifySerializer(_AliasMixin, serializers.Serializer):
+    aliases = {"username": "target", "password": "code"}
+
+    target = serializers.CharField(required=True, max_length=120, help_text="Email or phone number")
     code = serializers.CharField(max_length=6, required=True)
     purpose = serializers.ChoiceField(choices=OTP.PURPOSES, default="login")
 

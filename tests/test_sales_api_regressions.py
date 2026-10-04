@@ -98,10 +98,10 @@ def test_order_list_has_no_n_plus_one(auth_client, user, make_store_item, django
     assert Order.objects.filter(user=user).count() == 5
     assert OrderItem.objects.count() == 10
 
-    with django_assert_max_num_queries(4):
+    with django_assert_max_num_queries(5):  # +1 for the pagination COUNT
         res = auth_client.get("/api/sales/orders/")
     assert res.status_code == 200
-    assert len(res.json()) == 5
+    assert len(res.json()["results"]) == 5
 
 
 def test_cart_has_no_n_plus_one(auth_client, user, make_store_item, django_assert_max_num_queries):

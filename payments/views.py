@@ -8,13 +8,14 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from sales.models import Order, OrderStatus
 from sales.services import InvalidOrderTransition, cancel_order, mark_order_paid
 
 from .gateway import ZarinpalClient, ZarinpalError, to_rial
 from .models import Payment
-from .serializers import StartPayResponseSerializer, VerifyResponseSerializer
+from .serializers import PaymentSerializer, StartPayResponseSerializer, VerifyResponseSerializer
 from .tasks import log_transaction_task
 
 logger = logging.getLogger(__name__)
@@ -142,3 +143,26 @@ class VerifyView(APIView):
         order_id, ref_id, payload = str(order.id), result.ref_id or "", result.payload
         transaction.on_commit(lambda: log_transaction_task.delay(order_id, ref_id, payload))
         return Response({"status": "success", "ref_id": ref_id})
+
+
+@extend_schema(tags=["Payments"])
+class PaymentViewSet(ReadOnlyModelViewSet):
+    """/api/payments/: your payments (staff see all, filter ?status=&order=).
+
+    One payment exists per order; it is created at checkout and updated by
+    the start/verify endpoints.
+    """
+
+    serializer_class = PaymentSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ["status", "order"]
+    ordering_fields = ["created_at", "amount"]
+    lookup_value_regex = "[0-9a-f-]{36}"
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Payment.objects.none()
+        qs = Payment.objects.select_related("order").prefetch_related("transactions").order_by("-created_at")
+        if self.request.user.is_staff:
+            return qs
+        return qs.filter(order__user=self.request.user)

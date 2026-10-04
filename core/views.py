@@ -1,33 +1,37 @@
+import redis
+from django.conf import settings
+from django.db import connections
+from django.db.utils import OperationalError
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.generic import TemplateView
-from django.db import connections
-from django.db.utils import OperationalError
-import redis
 
 
 def health_check(request):
+    """Liveness/readiness probe used by the Docker healthcheck.
+
+    Returns 200 when the database and Redis (settings.REDIS_URL) answer,
+    503 otherwise.
+    """
     db_status = "ok"
     redis_status = "ok"
 
-    # Database check
     try:
         connections["default"].cursor()
     except OperationalError:
         db_status = "error"
 
-    # Redis check
     try:
-        r = redis.Redis(host="redis", port=6379)
-        r.ping()
-    except Exception:
+        client = redis.Redis.from_url(settings.REDIS_URL, socket_connect_timeout=2, socket_timeout=2)
+        client.ping()
+    except Exception:  # any connection problem means "not ready"
         redis_status = "error"
 
-    return JsonResponse({
-        "status": "ok" if db_status == redis_status == "ok" else "error",
-        "db": db_status,
-        "redis": redis_status
-    })
+    healthy = db_status == redis_status == "ok"
+    return JsonResponse(
+        {"status": "ok" if healthy else "error", "db": db_status, "redis": redis_status},
+        status=200 if healthy else 503,
+    )
 
 
 class SwaggerPlusView(TemplateView):

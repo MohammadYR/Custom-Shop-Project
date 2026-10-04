@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 
 from sales.models import Cart, CartItem, Order, OrderItem
 from sales.services import create_order_from_cart
+from accounts.models import Address
 from marketplace.models import Seller, Store, StoreItem
 from catalog.models import Category, Product, ProductVariant
 
@@ -18,6 +19,7 @@ def test_create_order_from_cart_success():
     """
     User = get_user_model()
     user = User.objects.create_user(username="buyer", email="buyer@example.com", password="p")
+    Address.objects.create(user=user, line1="Valiasr 1", city="Tehran", postal_code="111", is_default=True)
 
     # Product/variant pipeline for a store item
     cat = Category.objects.create(name="Cat")
@@ -47,6 +49,8 @@ def test_create_order_from_cart_success():
     assert oi.quantity == 2
     assert item.stock == 3  # 5 - 2
     assert cart.items.count() == 0
+    assert order.shipping_city == "Tehran"
+    assert order.shipping_line1 == "Valiasr 1"
 
 
 @pytest.mark.django_db

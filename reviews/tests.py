@@ -31,7 +31,7 @@ def test_product_review_crud_and_uniqueness():
     c2 = APIClient()
     res_list = c2.get(f"/api/reviews/products/?product={p.id}")
     assert res_list.status_code == 200
-    assert len(res_list.json()) == 1
+    assert res_list.json()["count"] == 1
 
 @pytest.mark.django_db
 def test_store_review_and_filtering():
@@ -48,9 +48,9 @@ def test_store_review_and_filtering():
     # filter by store
     res_list = c.get(f"/api/reviews/stores/?store={store.id}")
     assert res_list.status_code == 200
-    assert len(res_list.json()) == 1
+    assert res_list.json()["count"] == 1
 
     # filter by user
     res_list = c.get(f"/api/reviews/stores/?user={u.id}")
     assert res_list.status_code == 200
-    assert len(res_list.json()) == 1
+    assert res_list.json()["count"] == 1

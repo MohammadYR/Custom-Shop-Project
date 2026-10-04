@@ -19,6 +19,8 @@ urlpatterns = [
     path("api/sales/", include("sales.urls")),
     path("api/payments/", include("payments.urls")),
     path("api/reviews/", include("reviews.urls")),
+    # Paths defined by the course spec (/api/myuser/, /api/mycart/, /api/orders/...).
+    path("api/", include(("config.api_urls", "api"), namespace="api")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/schema.yaml", SpectacularYAMLAPIView.as_view(), name="schema-yaml"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
@@ -30,3 +32,8 @@ urlpatterns = [
 if settings.DEBUG:
     # Serve uploaded media in development (static files are served by django.contrib.staticfiles).
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+elif settings.SERVE_MEDIA:
+    from django.urls import re_path
+    from django.views.static import serve
+
+    urlpatterns += [re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT})]

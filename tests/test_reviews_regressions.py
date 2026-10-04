@@ -62,4 +62,4 @@ def test_store_reviews_filter_by_user(api_client, make_user, make_store):
     StoreReview.objects.create(user=u2, store=store, rating=4)
     res = api_client.get(f"/api/reviews/stores/?user={u1.id}")
     assert res.status_code == 200
-    assert len(res.json()) == 1
+    assert res.json()["count"] == 1

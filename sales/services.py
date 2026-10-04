@@ -19,7 +19,7 @@ from django.utils import timezone
 from marketplace.models import StoreItem
 from marketplace.tasks import notify_low_stock_email_task
 
-from .models import Cart, CartItem, Order, OrderItem, OrderStatus
+from .models import Cart, CartItem, Order, OrderItem, OrderItemStatus, OrderStatus
 from .tasks import (
     notify_sellers_order_paid_task,
     send_order_cancelled_email_task,
@@ -43,6 +43,14 @@ class CheckoutError(ValueError):
 
 class InvalidOrderTransition(ValueError):
     """The requested status change is not allowed by the state machine."""
+
+
+ITEM_TRANSITIONS: dict[str, set[str]] = {
+    OrderItemStatus.PENDING: {OrderItemStatus.SHIPPED, OrderItemStatus.CANCELLED},
+    OrderItemStatus.SHIPPED: {OrderItemStatus.DELIVERED},
+    OrderItemStatus.DELIVERED: set(),
+    OrderItemStatus.CANCELLED: set(),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -134,8 +142,20 @@ def _queue_low_stock_alerts(locked: dict, quantities: dict) -> None:
             )
 
 
+def _resolve_shipping_address(user, address):
+    from accounts.models import Address
+
+    if address is None:
+        address = Address.objects.filter(user=user).order_by("-is_default", "-created_at").first()
+    elif address.user_id != user.pk or address.is_deleted:
+        raise CheckoutError("Invalid shipping address.")
+    if address is None:
+        raise CheckoutError("Add a shipping address before checkout.")
+    return address
+
+
 @transaction.atomic
-def create_order_from_cart(cart: Cart) -> Order:
+def create_order_from_cart(cart: Cart, *, address=None) -> Order:
     """Turn ``cart`` into a PENDING order.
 
     - Locks the involved StoreItem rows (SELECT ... FOR UPDATE, in pk order to
@@ -144,6 +164,8 @@ def create_order_from_cart(cart: Cart) -> Order:
     - Creates the order items with bulk_create and a Payment row.
     - Empties the cart (hard delete).
 
+    - Snapshots the shipping address (``address`` or the user's default one).
+
     Raises CheckoutError and rolls everything back on any problem.
     """
     from payments.models import Payment  # payments depends on sales; avoid an import cycle
@@ -151,6 +173,7 @@ def create_order_from_cart(cart: Cart) -> Order:
     cart_items = list(cart.items.all())
     if not cart_items:
         raise CheckoutError("Your cart is empty.")
+    shipping = _resolve_shipping_address(cart.user, address)
 
     quantities = {ci.store_item_id: ci.quantity for ci in cart_items}
     locked = {
@@ -168,7 +191,13 @@ def create_order_from_cart(cart: Cart) -> Order:
         if quantity > store_item.stock:
             raise CheckoutError(f"Not enough stock for SKU {store_item.sku}")
 
-    order = Order.objects.create(user=cart.user)
+    order = Order.objects.create(
+        user=cart.user,
+        shipping_address=shipping,
+        shipping_line1=shipping.line1,
+        shipping_city=shipping.city,
+        shipping_postal_code=shipping.postal_code,
+    )
 
     for pk, quantity in quantities.items():
         updated = StoreItem.objects.filter(pk=pk, stock__gte=quantity).update(stock=F("stock") - quantity)
@@ -177,11 +206,17 @@ def create_order_from_cart(cart: Cart) -> Order:
 
     OrderItem.objects.bulk_create(
         [
-            OrderItem(order=order, store_item=locked[pk], unit_price=locked[pk].price, quantity=quantity)
+            OrderItem(
+                order=order,
+                store_item=locked[pk],
+                unit_price=locked[pk].final_price,
+                original_unit_price=locked[pk].price,
+                quantity=quantity,
+            )
             for pk, quantity in quantities.items()
         ]
     )
-    total = sum((locked[pk].price * quantity for pk, quantity in quantities.items()))
+    total = sum((locked[pk].final_price * quantity for pk, quantity in quantities.items()))
     # bulk_create sends no post_save signals, so set the payment amount explicitly.
     Payment.objects.update_or_create(
         order=order, defaults={"amount": total, "provider": order.payment_gateway or "zarinpal"}
@@ -240,14 +275,62 @@ def cancel_order(order: Order) -> Order:
     from payments.models import Payment
 
     order = _lock_for_transition(order, OrderStatus.CANCELLED)
-    for item in order.items.all():
+    for item in order.items.exclude(status=OrderItemStatus.CANCELLED):
         # all_objects: restock even if the store item was soft-deleted meanwhile.
+        # Lines already cancelled by the seller were restocked at that time.
         StoreItem.all_objects.filter(pk=item.store_item_id).update(stock=F("stock") + item.quantity)
 
     order.status = OrderStatus.CANCELLED
     order.save(update_fields=["status", "updated_at"])
+    order.items.update(status=OrderItemStatus.CANCELLED)
     Payment.objects.filter(order=order).exclude(status="VERIFIED").update(status="FAILED")
 
     order_id = str(order.pk)
     transaction.on_commit(lambda: send_order_cancelled_email_task.delay(order_id))
     return order
+
+
+# ---------------------------------------------------------------------------
+# Order item fulfilment (seller side)
+# ---------------------------------------------------------------------------
+
+@transaction.atomic
+def change_order_item_status(item: OrderItem, new_status: str) -> OrderItem:
+    """Move one order line through PENDING -> SHIPPED -> DELIVERED (or PENDING -> CANCELLED).
+
+    - Shipping requires the order to be PAID.
+    - Cancelling a line puts its quantity back in stock.
+    """
+    item = OrderItem.objects.select_for_update().select_related("order").get(pk=item.pk)
+    if new_status not in ITEM_TRANSITIONS.get(item.status, set()):
+        raise InvalidOrderTransition(f"Cannot change item status from {item.status} to {new_status}.")
+    if new_status == OrderItemStatus.SHIPPED and item.order.status != OrderStatus.PAID:
+        raise InvalidOrderTransition("Only items of paid orders can be shipped.")
+    if new_status == OrderItemStatus.CANCELLED:
+        if item.order.status == OrderStatus.CANCELLED:
+            raise InvalidOrderTransition("The order is already cancelled.")
+        StoreItem.all_objects.filter(pk=item.store_item_id).update(stock=F("stock") + item.quantity)
+    item.status = new_status
+    item.save(update_fields=["status", "updated_at"])
+    return item
+
+
+def seller_change_order_item_status(*, seller, item: OrderItem, new_status: str) -> OrderItem:
+    """Same as change_order_item_status, but only for lines sold by ``seller``'s stores."""
+    if item.store_item.store.owner_id != seller.pk:
+        raise PermissionError("This order item does not belong to your store.")
+    return change_order_item_status(item, new_status)
+
+
+def seller_orders_queryset(seller):
+    """Orders that contain at least one item of ``seller``; ``order.items`` only holds the seller's lines."""
+    own_items = OrderItem.objects.filter(store_item__store__owner=seller).select_related(
+        "store_item", "store_item__store", "store_item__variant", "store_item__variant__product"
+    )
+    return (
+        Order.objects.filter(items__store_item__store__owner=seller)
+        .distinct()
+        .select_related("user")
+        .prefetch_related(Prefetch("items", queryset=own_items))
+        .order_by("-created_at")
+    )

@@ -19,7 +19,7 @@ def test_store_items_list_no_longer_500(api_client, make_store_item):
     make_store_item()
     res = api_client.get("/api/marketplace/items/")
     assert res.status_code == 200
-    assert len(res.json()) == 1
+    assert res.json()["count"] == 1
 
 
 def test_store_owner_is_read_only(make_user, make_store):
