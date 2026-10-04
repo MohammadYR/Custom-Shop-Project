@@ -21,7 +21,7 @@ CACHES = {
 }
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
-EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+MAILERS = {"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}}
 
 # Run Celery tasks synchronously, without a broker.
 CELERY_TASK_ALWAYS_EAGER = True

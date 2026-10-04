@@ -51,7 +51,6 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "django_filters",
-    "django_extensions",
     "core",
     "accounts.apps.AccountsConfig",
     "marketplace",
@@ -333,13 +332,30 @@ SPECTACULAR_SETTINGS = {
 # ---------------------------------------------------------------------------
 # Email (credentials come only from the environment)
 # ---------------------------------------------------------------------------
-EMAIL_BACKEND = env_str("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
-EMAIL_HOST = env_str("EMAIL_HOST", "smtp.gmail.com")
-EMAIL_PORT = env_int("EMAIL_PORT", 587)
-EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
-EMAIL_HOST_USER = env_str("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = env_str("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = env_str("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@localhost")
+SMTP_EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+
+def build_mailers(backend: str) -> dict:
+    """Return the Django 6.1+ ``MAILERS`` setting for the given backend.
+
+    Connection options are only valid for the SMTP backend; the console and
+    locmem backends reject unknown options.
+    """
+    mailer: dict = {"BACKEND": backend}
+    if backend == SMTP_EMAIL_BACKEND:
+        mailer["OPTIONS"] = {
+            "host": env_str("EMAIL_HOST", "smtp.gmail.com"),
+            "port": env_int("EMAIL_PORT", 587),
+            "use_tls": env_bool("EMAIL_USE_TLS", True),
+            "username": env_str("EMAIL_HOST_USER", ""),
+            "password": env_str("EMAIL_HOST_PASSWORD", ""),
+            "timeout": env_int("EMAIL_TIMEOUT", 10),
+        }
+    return {"default": mailer}
+
+
+MAILERS = build_mailers(env_str("EMAIL_BACKEND", SMTP_EMAIL_BACKEND))
+DEFAULT_FROM_EMAIL = env_str("DEFAULT_FROM_EMAIL", env_str("EMAIL_HOST_USER") or "noreply@localhost")
 
 
 # ---------------------------------------------------------------------------
