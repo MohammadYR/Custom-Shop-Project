@@ -187,6 +187,10 @@ INVENTORY_LOW_STOCK_THRESHOLD = env_int("INVENTORY_LOW_STOCK_THRESHOLD", 3)
 OTP_EXPIRY_MINUTES = env_int("OTP_EXPIRY_MINUTES", 5)
 OTP_MAX_ATTEMPTS = env_int("OTP_MAX_ATTEMPTS", 5)
 
+# SMS (Kavenegar). Leave the key empty to disable SMS delivery.
+KAVENEGAR_API_KEY = env_str("KAVENEGAR_API_KEY", "")
+KAVENEGAR_SENDER = env_str("KAVENEGAR_SENDER", "")
+
 
 # ---------------------------------------------------------------------------
 # Django REST framework / JWT / OpenAPI
