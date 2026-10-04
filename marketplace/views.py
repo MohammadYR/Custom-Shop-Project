@@ -1,8 +1,12 @@
 from django.db import transaction
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import decorators, response, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
+
+from reviews.mixins import ReviewActionsMixin, review_schema
+from reviews.serializers import StoreReviewSerializer
 
 from .models import Seller, Store, StoreItem
 from .permissions import IsOwnerOrReadOnly
@@ -85,3 +89,31 @@ class StoreItemViewSet(ModelViewSet):
             seller = getattr(self.request.user, "seller_profile", None)
             return qs.filter(store__owner=seller) if seller else qs.none()
         return qs
+
+
+@extend_schema(tags=["Store"])
+@extend_schema_view(**review_schema(StoreReviewSerializer))
+class PublicStoreViewSet(ReviewActionsMixin, ReadOnlyModelViewSet):
+    """/api/stores/: public list of active stores, their items, and store reviews."""
+
+    queryset = (
+        Store.objects.filter(is_active=True).select_related("owner", "owner__user").prefetch_related("addresses")
+    )
+    serializer_class = StoreSerializer
+    permission_classes = [AllowAny]
+    search_fields = ["name", "description"]
+    ordering_fields = ["name", "created_at"]
+    review_serializer_class = StoreReviewSerializer
+    review_target_field = "store"
+
+    @extend_schema(responses={200: StoreItemSerializer(many=True)})
+    @decorators.action(detail=True, methods=["get"])
+    def items(self, request, pk=None):
+        store = self.get_object()
+        qs = (
+            StoreItem.objects.filter(store=store, is_active=True)
+            .select_related("store", "variant", "variant__product")
+            .order_by("-created_at")
+        )
+        page = self.paginate_queryset(qs)
+        return self.get_paginated_response(StoreItemSerializer(page, many=True).data)
