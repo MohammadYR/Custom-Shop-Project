@@ -28,4 +28,3 @@ def log_transaction_task(order_id: str, ref_id: str, payload: dict, status: str 
         raw_payload=payload or {},
         status=status or "VERIFIED",
     )
-

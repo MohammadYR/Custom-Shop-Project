@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from core.admin import SoftDeleteAdminMixin
 from .models import Seller, Store, StoreAddress, StoreItem
 
+
 class StoreInline(admin.TabularInline):
     model = Store
     extra = 0
@@ -42,6 +43,7 @@ class SellerAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     def deactivate_sellers(self, request, queryset):
         updated = queryset.update(is_active=False)
         self.message_user(request, _("{} sellers deactivated.").format(updated))
+
 
 class StoreItemInline(admin.TabularInline):
     model = StoreItem
@@ -87,7 +89,12 @@ class StoreAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     inlines = (StoreAddressInline, StoreItemInline)
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("owner", "owner__user").annotate(_items=Count("items", distinct=True))
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("owner", "owner__user")
+            .annotate(_items=Count("items", distinct=True))
+        )
 
     @admin.display(ordering="_items", description=_("Items"))
     def items_count(self, obj):
@@ -96,14 +103,20 @@ class StoreAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     @admin.display(description=_("Logo"))
     def logo_thumb(self, obj):
         if obj.logo:
-            return format_html('<img src="{}" style="height:32px;width:auto;border-radius:4px;object-fit:cover"/>', obj.logo.url)
+            return format_html(
+                '<img src="{}" style="height:32px;width:auto;border-radius:4px;object-fit:cover"/>', obj.logo.url
+            )
         return "—"
 
     @admin.display(description=_("Logo"))
     def logo_preview(self, obj):
         if obj.logo:
-            return format_html('<img src="{}" style="max-height:200px;width:auto;border:1px solid #eee;padding:4px;border-radius:6px"/>', obj.logo.url)
+            return format_html(
+                '<img src="{}" style="max-height:200px;width:auto;border:1px solid #eee;padding:4px;border-radius:6px"/>',
+                obj.logo.url,
+            )
         return "—"
+
 
 @admin.register(StoreItem)
 class StoreItemAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):

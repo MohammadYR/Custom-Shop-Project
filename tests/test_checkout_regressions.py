@@ -1,4 +1,5 @@
 """Regression tests for checkout (sales.services.create_order_from_cart)."""
+
 from decimal import Decimal
 
 import pytest

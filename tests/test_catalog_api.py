@@ -34,6 +34,7 @@ def test_product_crud(staff_client, api_client):
 
 # --- regression: catalog was writable by anonymous users (AllowAny) ---------
 
+
 @pytest.mark.parametrize(
     "url,payload",
     [
@@ -59,6 +60,7 @@ def test_regular_user_cannot_write_catalog(auth_client):
 
 # --- regression: Persian names produced empty / duplicate slugs -------------
 
+
 def test_persian_names_get_unique_unicode_slugs():
     first = Category.objects.create(name="موبایل")
     second = Category.objects.create(name="موبایل!")  # slugifies to the same value
@@ -78,6 +80,7 @@ def test_symbol_only_name_falls_back_to_a_non_empty_slug():
 
 
 # --- regression: soft-deleted category blocked re-creating the same name ----
+
 
 def test_category_name_reusable_after_soft_delete(staff_client):
     old = Category.objects.create(name="Phones")

@@ -19,4 +19,3 @@ def test_basemodel_soft_delete_and_restore():
 
     c.restore()  # restore
     assert Category.objects.filter(pk=pk).exists() is True
-

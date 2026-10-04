@@ -68,6 +68,7 @@ class ProductVariantViewSet(ModelViewSet):
 # Spec paths: /api/categories/, /api/admin/categories/, /api/products/
 # ---------------------------------------------------------------------------
 
+
 @extend_schema(tags=["Catalog"])
 class PublicCategoryViewSet(ReadOnlyModelViewSet):
     """/api/categories/: public list of categories."""

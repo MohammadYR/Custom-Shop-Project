@@ -19,6 +19,7 @@ def low_stock_alert(sender, instance: StoreItem, **kwargs):
     threshold = getattr(settings, "INVENTORY_LOW_STOCK_THRESHOLD", 3)
     try:
         from .models import StoreItem as StoreItemModel
+
         old_stock = StoreItemModel.objects.only("stock").get(pk=instance.pk).stock
     except Exception:
         old_stock = None
@@ -30,7 +31,7 @@ def low_stock_alert(sender, instance: StoreItem, **kwargs):
         # If we don't know old stock, fall back to notifying only if clearly crossing
         should_notify = new_stock <= threshold
     else:
-        should_notify = (old_stock > threshold and new_stock <= threshold)
+        should_notify = old_stock > threshold and new_stock <= threshold
 
     if not should_notify:
         return

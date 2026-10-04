@@ -9,6 +9,7 @@ All order status changes go through this module so that side effects
 
 PAID and CANCELLED are terminal states.
 """
+
 from __future__ import annotations
 
 from django.conf import settings
@@ -57,6 +58,7 @@ ITEM_TRANSITIONS: dict[str, set[str]] = {
 # Querysets
 # ---------------------------------------------------------------------------
 
+
 def _item_prefetch(model):
     return Prefetch(
         "items",
@@ -77,6 +79,7 @@ def order_queryset():
 # ---------------------------------------------------------------------------
 # Cart
 # ---------------------------------------------------------------------------
+
 
 def get_or_create_cart(user) -> Cart:
     """Return the user's cart, restoring it if it had been soft-deleted.
@@ -128,6 +131,7 @@ def remove_cart_item(item: CartItem) -> None:
 # ---------------------------------------------------------------------------
 # Checkout
 # ---------------------------------------------------------------------------
+
 
 def _queue_low_stock_alerts(locked: dict, quantities: dict) -> None:
     threshold = settings.INVENTORY_LOW_STOCK_THRESHOLD
@@ -231,6 +235,7 @@ def create_order_from_cart(cart: Cart, *, address=None) -> Order:
 # Order state machine
 # ---------------------------------------------------------------------------
 
+
 def _lock_for_transition(order: Order, new_status: str) -> Order:
     locked = Order.objects.select_for_update().get(pk=order.pk)
     if new_status not in ALLOWED_TRANSITIONS.get(locked.status, set()):
@@ -293,6 +298,7 @@ def cancel_order(order: Order) -> Order:
 # ---------------------------------------------------------------------------
 # Order item fulfilment (seller side)
 # ---------------------------------------------------------------------------
+
 
 @transaction.atomic
 def change_order_item_status(item: OrderItem, new_status: str) -> OrderItem:

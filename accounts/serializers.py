@@ -121,8 +121,19 @@ class MyUserSerializer(UserMeSerializer):
     recent_orders = serializers.SerializerMethodField()
 
     class Meta(UserMeSerializer.Meta):
-        fields = ("id", "username", "email", "phone_number", "first_name", "last_name", "full_name",
-                  "is_seller", "date_joined", "orders_count", "recent_orders")
+        fields = (
+            "id",
+            "username",
+            "email",
+            "phone_number",
+            "first_name",
+            "last_name",
+            "full_name",
+            "is_seller",
+            "date_joined",
+            "orders_count",
+            "recent_orders",
+        )
         read_only_fields = ("id", "username", "is_seller", "date_joined")
 
     def get_orders_count(self, obj) -> int:
@@ -146,8 +157,19 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "username", "email", "phone_number", "first_name", "last_name", "is_active",
-                  "is_staff", "is_seller", "date_joined", "last_login")
+        fields = (
+            "id",
+            "username",
+            "email",
+            "phone_number",
+            "first_name",
+            "last_name",
+            "is_active",
+            "is_staff",
+            "is_seller",
+            "date_joined",
+            "last_login",
+        )
         read_only_fields = ("id", "date_joined", "last_login")
 
     def validate_username(self, value):

@@ -42,18 +42,32 @@ class ProductSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="title", read_only=True)
     images = ProductImageNestedSerializer(many=True, read_only=True)
     stock = serializers.IntegerField(source="total_stock", read_only=True, default=0)
-    best_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, allow_null=True, default=None)
+    best_price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True, allow_null=True, default=None
+    )
     rating = serializers.DecimalField(max_digits=3, decimal_places=2, read_only=True, allow_null=True, default=None)
     reviews_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = Product
         fields = [
-            "id", "category", "category_detail",
-            "title", "name", "slug", "description",
-            "price", "best_price", "stock", "is_active", "image", "images",
-            "rating", "reviews_count",
-            "created_at", "updated_at",
+            "id",
+            "category",
+            "category_detail",
+            "title",
+            "name",
+            "slug",
+            "description",
+            "price",
+            "best_price",
+            "stock",
+            "is_active",
+            "image",
+            "images",
+            "rating",
+            "reviews_count",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["id", "slug", "created_at", "updated_at"]
 

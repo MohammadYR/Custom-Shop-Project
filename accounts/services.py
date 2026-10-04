@@ -1,4 +1,5 @@
 """Business logic for accounts (OTP issuing and verification)."""
+
 from __future__ import annotations
 
 import secrets
@@ -31,7 +32,7 @@ def normalize_target(target: str) -> str:
 
 def generate_otp_code(length: int = 6) -> str:
     """Cryptographically secure numeric code (``random`` is predictable)."""
-    return f"{secrets.randbelow(10 ** length):0{length}d}"
+    return f"{secrets.randbelow(10**length):0{length}d}"
 
 
 def request_otp(*, target: str, purpose: str) -> IssuedOTP:

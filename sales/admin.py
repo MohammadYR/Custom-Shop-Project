@@ -49,6 +49,7 @@ class HasItemsFilter(admin.SimpleListFilter):
             return queryset.filter(items__isnull=True)
         return queryset
 
+
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
@@ -74,6 +75,7 @@ class PaymentInline(admin.StackedInline):
     fields = ("amount", "provider", "status", "authority", "paid_at", "created_at")
     readonly_fields = ("created_at",)
 
+
 @admin.register(Cart)
 class CartAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     list_display = ("id", "user", "total_items", "total_price", "created_at")
@@ -83,15 +85,15 @@ class CartAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     inlines = (CartItemInline,)
     list_select_related = ("user",)
     ordering = ("-created_at",)
-    list_filter = (HasItemsFilter, "created_at",)
+    list_filter = (
+        HasItemsFilter,
+        "created_at",
+    )
     actions = ("action_clear_items", "action_create_orders")
 
     def get_queryset(self, request):
         return (
-            super()
-            .get_queryset(request)
-            .select_related("user")
-            .prefetch_related("items__store_item__variant__product")
+            super().get_queryset(request).select_related("user").prefetch_related("items__store_item__variant__product")
         )
 
     @admin.action(description=_("Clear items of selected carts"))
@@ -149,6 +151,7 @@ class OrderAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
         "paid_at",
         "created_at",
     )
+
     class HasPaymentFilter(admin.SimpleListFilter):
         title = _("Has payment")
         parameter_name = "has_payment"
@@ -243,7 +246,11 @@ class OrderAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
             "FAILED": "#dc2626",
             "INITIATED": "#6b7280",
         }.get(s, "#6b7280")
-        return format_html('<span style="padding:2px 6px;border-radius:10px;background:{};color:#fff;font-size:12px;">{}</span>', color, s)
+        return format_html(
+            '<span style="padding:2px 6px;border-radius:10px;background:{};color:#fff;font-size:12px;">{}</span>',
+            color,
+            s,
+        )
 
     @admin.display(ordering="payment", description=_("Payment Link"))
     def payment_link(self, obj):
@@ -274,9 +281,7 @@ class OrderAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
                 done += 1
             except InvalidOrderTransition:
                 skipped += 1
-        self.message_user(
-            request, _("{} orders marked as {}. {} skipped (not PENDING).").format(done, label, skipped)
-        )
+        self.message_user(request, _("{} orders marked as {}. {} skipped (not PENDING).").format(done, label, skipped))
 
     @admin.action(description=_("Mark selected orders as PAID"))
     def mark_paid(self, request, queryset):
@@ -300,8 +305,15 @@ class OrderItemAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     autocomplete_fields = ("order", "store_item")
     list_select_related = ("order__user", "store_item__variant__product")
     list_filter = ("status", "created_at")
-    readonly_fields = ("status", "unit_price", "original_unit_price", "quantity", "created_at", "updated_at",
-                       "deleted_at")
+    readonly_fields = (
+        "status",
+        "unit_price",
+        "original_unit_price",
+        "quantity",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+    )
     actions = ("mark_shipped", "mark_delivered", "mark_items_cancelled")
 
     def _set_status(self, request, queryset, new_status):

@@ -13,6 +13,7 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
+
 class Profile(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     full_name = models.CharField(max_length=120, blank=True)
@@ -21,13 +22,14 @@ class Profile(BaseModel):
     def __str__(self):
         return self.full_name
 
+
 class Address(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="addresses")
     line1 = models.CharField(max_length=200)
     city = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20)
     is_default = models.BooleanField(default=False)
-    purpose = models.CharField(max_length=20, default="shipping") # shipping/billing
+    purpose = models.CharField(max_length=20, default="shipping")  # shipping/billing
 
     class Meta:
         constraints = [
@@ -39,16 +41,17 @@ class Address(BaseModel):
             )
         ]
 
+
 class OTP(BaseModel):
     PURPOSES = [
-    ("login", "Login"),
-    ("register", "Register"), 
-    ("reset_password", "Reset Password"),
-    ("verify_phone", "Verify Phone"),
-    ("verify_email", "Verify Email"),
-]
-    channel = models.CharField(max_length=10, default="sms") # sms/email
-    target = models.CharField(max_length=120) # phone or email
+        ("login", "Login"),
+        ("register", "Register"),
+        ("reset_password", "Reset Password"),
+        ("verify_phone", "Verify Phone"),
+        ("verify_email", "Verify Email"),
+    ]
+    channel = models.CharField(max_length=10, default="sms")  # sms/email
+    target = models.CharField(max_length=120)  # phone or email
     code = models.CharField(max_length=6)
     purpose = models.CharField(max_length=20, choices=PURPOSES)
     expires_at = models.DateTimeField()
@@ -56,6 +59,5 @@ class OTP(BaseModel):
     # Number of wrong codes submitted for this OTP (brute-force protection).
     attempts = models.PositiveSmallIntegerField(default=0)
 
-
     class Meta:
-        indexes = [models.Index(fields=["target","purpose","expires_at"])]
+        indexes = [models.Index(fields=["target", "purpose", "expires_at"])]

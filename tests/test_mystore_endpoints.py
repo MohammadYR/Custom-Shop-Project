@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from marketplace.models import Seller, Store
 
+
 @pytest.mark.django_db
 def test_mystore_lists_only_my_stores():
     User = get_user_model()
@@ -13,7 +14,8 @@ def test_mystore_lists_only_my_stores():
     Store.objects.create(owner=s1, name="A-Shop")
     Store.objects.create(owner=s2, name="B-Shop")
 
-    client = APIClient(); client.force_authenticate(user=u1)
+    client = APIClient()
+    client.force_authenticate(user=u1)
     res = client.get("/api/marketplace/stores/mine/")
     assert res.status_code == 200
     names = [st["name"] for st in res.json()]

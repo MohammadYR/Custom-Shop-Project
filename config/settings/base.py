@@ -5,6 +5,7 @@ All secrets and deployment-specific values are read from environment
 variables. For local development put them in a git-ignored ``.env`` file at
 the repository root (see ``.env.example``).
 """
+
 from datetime import timedelta
 from pathlib import Path
 
@@ -206,12 +207,8 @@ KAVENEGAR_SENDER = env_str("KAVENEGAR_SENDER", "")
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "core.pagination.DefaultPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_FILTER_BACKENDS": (
@@ -334,7 +331,6 @@ SPECTACULAR_SETTINGS = {
     },
     "POSTPROCESSING_HOOKS": [
         "drf_spectacular.hooks.postprocess_schema_enums",
-
     ],
 }
 

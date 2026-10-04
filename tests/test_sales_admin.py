@@ -1,4 +1,5 @@
 """Admin actions must go through the order state machine (they used queryset.update())."""
+
 import pytest
 from django.test import Client
 from django.urls import reverse

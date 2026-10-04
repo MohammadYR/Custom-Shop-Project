@@ -4,6 +4,7 @@ Configured with KAVENEGAR_API_KEY (and optionally KAVENEGAR_SENDER). Without
 an API key nothing is sent and a warning is logged, so local development and
 tests never hit the network. Message contents (OTP codes) are never logged.
 """
+
 import logging
 
 from django.conf import settings
@@ -32,7 +33,7 @@ def send_sms(phone_number: str, message: str) -> bool:
         params["sender"] = sender
     try:
         KavenegarAPI(api_key).sms_send(params)
-    except (APIException, HTTPException):
+    except APIException, HTTPException:
         logger.exception("Kavenegar failed to send SMS to %s", mask_target(phone_number))
         return False
     logger.info("SMS sent to %s", mask_target(phone_number))

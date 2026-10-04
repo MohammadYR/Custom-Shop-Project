@@ -1,4 +1,5 @@
 """SMS delivery via Kavenegar (network always mocked)."""
+
 from unittest import mock
 
 from accounts.sms import send_sms

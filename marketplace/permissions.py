@@ -1,5 +1,6 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
+
 class IsOwnerOrReadOnly(BasePermission):
     """
     خواندن برای همه آزاد؛ نوشتن فقط اگر مالک شیء باشی:
@@ -7,6 +8,7 @@ class IsOwnerOrReadOnly(BasePermission):
     - Store → obj.owner.user == request.user
     - StoreItem → obj.store.owner.user == request.user
     """
+
     def has_object_permission(self, request, view, obj):
         if request.method in SAFE_METHODS:
             return True

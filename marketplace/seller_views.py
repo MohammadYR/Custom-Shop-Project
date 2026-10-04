@@ -1,4 +1,5 @@
 """Seller area at /api/mystore/: the seller's own store, addresses, items and orders."""
+
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import generics, mixins, permissions, serializers, status
 from rest_framework.exceptions import NotFound
@@ -156,9 +157,13 @@ class MyStoreOrderItemViewSet(SellerMixin, mixins.ListModelMixin, mixins.Retriev
     def get_queryset(self):
         if self._fake():
             return OrderItem.objects.none()
-        return OrderItem.objects.filter(store_item__store__owner__user=self.request.user).select_related(
-            "order", "store_item", "store_item__store", "store_item__variant", "store_item__variant__product"
-        ).order_by("-created_at")
+        return (
+            OrderItem.objects.filter(store_item__store__owner__user=self.request.user)
+            .select_related(
+                "order", "store_item", "store_item__store", "store_item__variant", "store_item__variant__product"
+            )
+            .order_by("-created_at")
+        )
 
     @extend_schema(
         request=OrderItemStatusSerializer,
@@ -169,7 +174,9 @@ class MyStoreOrderItemViewSet(SellerMixin, mixins.ListModelMixin, mixins.Retriev
         ser = OrderItemStatusSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         try:
-            item = seller_change_order_item_status(seller=self.seller, item=item, new_status=ser.validated_data["status"])
+            item = seller_change_order_item_status(
+                seller=self.seller, item=item, new_status=ser.validated_data["status"]
+            )
         except InvalidOrderTransition as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(OrderItemSerializer(self.get_queryset().get(pk=item.pk)).data)

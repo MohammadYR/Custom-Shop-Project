@@ -1,4 +1,5 @@
 """Production settings. Every security-relevant value comes from the environment."""
+
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F401,F403

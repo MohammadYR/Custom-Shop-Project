@@ -2,21 +2,23 @@ import uuid
 from django.db import models
 from django.utils import timezone
 
+
 class SoftDeleteQuerySet(models.QuerySet):
     def delete(self):
         return super().update(deleted_at=timezone.now())
 
     def hard_delete(self):
         return super().delete()
-    
+
     def alive(self):
         return self.filter(deleted_at__isnull=True)
-    
+
     def dead(self):
         return self.exclude(deleted_at__isnull=True)
 
     def restore(self):
         return self.update(deleted_at=None)
+
 
 class SoftDeleteManager(models.Manager):
     def get_queryset(self):
@@ -30,7 +32,7 @@ class SoftDeleteManager(models.Manager):
 
     def with_deleted(self):
         return SoftDeleteQuerySet(self.model, using=self._db)
-    
+
     def hard_delete(self):
         return SoftDeleteQuerySet(self.model, using=self._db).hard_delete()
 
@@ -58,12 +60,13 @@ class BaseModel(models.Model):
       model signal handlers or custom save overrides that depend on full saves.
     - Consider wrapping multi-row hard deletes or restores in transactions when performing bulk operations.
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
-    objects = SoftDeleteManager()             # فقط رکوردهای زنده
+    objects = SoftDeleteManager()  # فقط رکوردهای زنده
     all_objects = SoftDeleteQuerySet.as_manager()  # همه رکوردها
 
     class Meta:
@@ -83,8 +86,8 @@ class BaseModel(models.Model):
         if commit:
             self.save(update_fields=["deleted_at", "updated_at"])
         return self
-    
-    # برای خوانایی بهتر    
+
+    # برای خوانایی بهتر
     @property
     def is_deleted(self):
         """

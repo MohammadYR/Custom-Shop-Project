@@ -114,9 +114,13 @@ class CartItemViewSet(
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):  # schema generation
             return CartItem.objects.none()
-        return CartItem.objects.filter(cart__user=self.request.user).select_related(
-            "cart", "store_item", "store_item__store", "store_item__variant", "store_item__variant__product"
-        ).order_by("created_at")
+        return (
+            CartItem.objects.filter(cart__user=self.request.user)
+            .select_related(
+                "cart", "store_item", "store_item__store", "store_item__variant", "store_item__variant__product"
+            )
+            .order_by("created_at")
+        )
 
     def create(self, request, *args, **kwargs):
         ser = self.get_serializer(data=request.data)
@@ -183,6 +187,7 @@ class OrderItemViewSet(ReadOnlyModelViewSet):
 # ---------------------------------------------------------------------------
 # Spec paths: /api/mycart/, /api/orders/checkout/, /api/orders/ (staff)
 # ---------------------------------------------------------------------------
+
 
 class AddToCartSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1, default=1)

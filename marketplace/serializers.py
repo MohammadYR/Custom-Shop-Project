@@ -27,10 +27,20 @@ class StoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store
         fields = [
-            "id", "owner", "owner_detail",
-            "name", "slug", "description", "logo",
-            "phone_number", "email", "website", "addresses",
-            "is_active", "created_at", "updated_at",
+            "id",
+            "owner",
+            "owner_detail",
+            "name",
+            "slug",
+            "description",
+            "logo",
+            "phone_number",
+            "email",
+            "website",
+            "addresses",
+            "is_active",
+            "created_at",
+            "updated_at",
         ]
         # The owner is the requesting seller (set in the view) and cannot be changed.
         read_only_fields = ["id", "owner", "slug", "created_at", "updated_at"]
@@ -54,9 +64,21 @@ class StoreItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = StoreItem
         fields = [
-            "id", "store", "store_name", "product", "variant", "variant_detail",
-            "sku", "price", "discount_percent", "final_price", "discount_price",
-            "stock", "is_active", "created_at", "updated_at",
+            "id",
+            "store",
+            "store_name",
+            "product",
+            "variant",
+            "variant_detail",
+            "sku",
+            "price",
+            "discount_percent",
+            "final_price",
+            "discount_price",
+            "stock",
+            "is_active",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 

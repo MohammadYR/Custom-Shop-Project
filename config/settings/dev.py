@@ -1,4 +1,5 @@
 """Local development settings."""
+
 from .base import *  # noqa: F401,F403
 from .base import build_mailers, env_bool, env_list, env_str
 

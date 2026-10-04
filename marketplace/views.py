@@ -96,9 +96,7 @@ class StoreItemViewSet(ModelViewSet):
 class PublicStoreViewSet(ReviewActionsMixin, ReadOnlyModelViewSet):
     """/api/stores/: public list of active stores, their items, and store reviews."""
 
-    queryset = (
-        Store.objects.filter(is_active=True).select_related("owner", "owner__user").prefetch_related("addresses")
-    )
+    queryset = Store.objects.filter(is_active=True).select_related("owner", "owner__user").prefetch_related("addresses")
     serializer_class = StoreSerializer
     permission_classes = [AllowAny]
     search_fields = ["name", "description"]

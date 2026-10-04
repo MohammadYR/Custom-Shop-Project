@@ -8,6 +8,7 @@ from django.db.models import Count, Q, Sum, Max
 from core.admin import SoftDeleteAdminMixin
 from .models import User, Profile, Address, OTP
 
+
 class HasProfileFilter(admin.SimpleListFilter):
     title = _("Has profile")
     parameter_name = "has_profile"
@@ -124,17 +125,14 @@ class CustomUserAdmin(UserAdmin):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         # Aggregates: addresses count, orders count, last order time, total spent of verified payments
-        return (
-            qs.select_related("profile")
-            .annotate(
-                addresses_total=Count("addresses", distinct=True),
-                orders_total=Count("orders", distinct=True),
-                last_order_time=Max("orders__created_at"),
-                total_spent_verified=Sum(
-                    "orders__payment__amount",
-                    filter=Q(orders__payment__status="VERIFIED"),
-                ),
-            )
+        return qs.select_related("profile").annotate(
+            addresses_total=Count("addresses", distinct=True),
+            orders_total=Count("orders", distinct=True),
+            last_order_time=Max("orders__created_at"),
+            total_spent_verified=Sum(
+                "orders__payment__amount",
+                filter=Q(orders__payment__status="VERIFIED"),
+            ),
         )
 
     @admin.display(ordering="addresses_total", description=_("Addresses"))
@@ -182,7 +180,7 @@ class CustomUserAdmin(UserAdmin):
     def unmark_as_seller(self, request, queryset):
         updated = queryset.update(is_seller=False)
         self.message_user(request, _("{} users unmarked as seller.").format(updated))
-    
+
 
 @admin.register(Profile)
 class ProfileAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
@@ -199,12 +197,12 @@ class ProfileAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     raw_id_fields = ("user",)
     readonly_fields = ("avatar_preview", "created_at", "updated_at", "deleted_at")
 
-
     @admin.display(description="Avatar")
     def avatar_preview(self, obj):
         if obj.avatar:
             return format_html('<img src="{}" width="50" height="50" style="border-radius:50%;" />', obj.avatar.url)
         return "—"
+
 
 @admin.register(Address)
 class AddressAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
@@ -225,6 +223,7 @@ class AddressAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     list_select_related = ("user",)
     readonly_fields = ("created_at", "updated_at", "deleted_at")
 
+
 @admin.register(OTP)
 class OTPAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     list_display = (
@@ -236,6 +235,7 @@ class OTPAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
         "expires_at",
         "created_at",
     )
+
     class IsExpiredFilter(admin.SimpleListFilter):
         title = _("Expired")
         parameter_name = "expired"
@@ -268,7 +268,11 @@ class OTPAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
         elif obj.expires_at and obj.expires_at < now:
             label = "EXPIRED"
             color = "#dc2626"
-        return format_html('<span style="padding:2px 6px;border-radius:10px;background:{};color:#fff;font-size:12px;">{}</span>', color, label)
+        return format_html(
+            '<span style="padding:2px 6px;border-radius:10px;background:{};color:#fff;font-size:12px;">{}</span>',
+            color,
+            label,
+        )
 
     @admin.action(description=_("Mark selected as USED"))
     def mark_used(self, request, queryset):

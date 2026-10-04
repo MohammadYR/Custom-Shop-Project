@@ -45,6 +45,7 @@ class PaymentAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
         "paid_at",
         "created_at",
     )
+
     class HasPaidAtFilter(admin.SimpleListFilter):
         title = _("Has paid_at")
         parameter_name = "has_paid_at"
@@ -73,7 +74,15 @@ class PaymentAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
                 return queryset.filter(transactions__isnull=True)
             return queryset
 
-    list_filter = ("status", HasAuthorityFilter, HasTransactionsFilter, HasPaidAtFilter, "provider", "paid_at", "created_at")
+    list_filter = (
+        "status",
+        HasAuthorityFilter,
+        HasTransactionsFilter,
+        HasPaidAtFilter,
+        "provider",
+        "paid_at",
+        "created_at",
+    )
     search_fields = (
         "order__user__email",
         "order__user__username",
@@ -152,6 +161,7 @@ class TransactionAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
         "payload_preview",
         "created_at",
     )
+
     class HasRefIdFilter(admin.SimpleListFilter):
         title = _("Has ref id")
         parameter_name = "has_ref_id"
@@ -206,7 +216,11 @@ class TransactionAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
             "FAILED": "#dc2626",
             "INITIATED": "#6b7280",
         }.get(s, "#6b7280")
-        return format_html('<span style="padding:2px 6px;border-radius:10px;background:{};color:#fff;font-size:12px;">{}</span>', color, s or "—")
+        return format_html(
+            '<span style="padding:2px 6px;border-radius:10px;background:{};color:#fff;font-size:12px;">{}</span>',
+            color,
+            s or "—",
+        )
 
     @admin.action(description=_("Mark selected as INITIATED"))
     def mark_initiated(self, request, queryset):

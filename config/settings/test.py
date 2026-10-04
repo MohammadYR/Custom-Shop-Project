@@ -6,6 +6,7 @@ with ``docker compose up -d db``. Set DB_ENGINE=django.db.backends.sqlite3 to
 run against in-memory SQLite instead. Redis, SMTP and network access are never
 needed.
 """
+
 from .base import *  # noqa: F401,F403
 
 DEBUG = False

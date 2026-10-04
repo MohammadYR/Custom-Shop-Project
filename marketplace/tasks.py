@@ -14,7 +14,9 @@ def notify_low_stock_email_task(store_item_id: str, sku: str, stock: int, thresh
     from .models import StoreItem
 
     try:
-        item = StoreItem.objects.select_related("store", "store__owner", "store__owner__user", "variant").get(pk=store_item_id)
+        item = StoreItem.objects.select_related("store", "store__owner", "store__owner__user", "variant").get(
+            pk=store_item_id
+        )
     except StoreItem.DoesNotExist:
         return
 
@@ -37,4 +39,3 @@ def notify_low_stock_email_task(store_item_id: str, sku: str, stock: int, thresh
     except Exception:
         # In dev, email backend may be console or misconfigured; ignore failures
         pass
-

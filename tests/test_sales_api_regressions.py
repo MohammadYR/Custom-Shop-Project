@@ -1,4 +1,5 @@
 """Regression tests for the cart / order API."""
+
 from decimal import Decimal
 
 import pytest
@@ -33,9 +34,7 @@ def test_buyer_cannot_create_or_delete_orders(auth_client, order):
 
 def test_buyer_cannot_edit_order_items(auth_client, order):
     oi = order.items.get()
-    res = auth_client.patch(
-        f"/api/sales/order-items/{oi.id}/", {"unit_price": "0.50", "quantity": 1}, format="json"
-    )
+    res = auth_client.patch(f"/api/sales/order-items/{oi.id}/", {"unit_price": "0.50", "quantity": 1}, format="json")
     assert res.status_code == 405
     oi.refresh_from_db()
     assert oi.unit_price == Decimal("100.00")
@@ -66,7 +65,9 @@ def test_cart_item_cart_field_is_read_only(auth_client, user, make_user, make_st
     victim_cart = get_or_create_cart(victim)
     item = make_store_item(stock=5)
     res = auth_client.post(
-        "/api/sales/cart-items/", {"store_item": str(item.id), "quantity": 1, "cart": str(victim_cart.id)}, format="json"
+        "/api/sales/cart-items/",
+        {"store_item": str(item.id), "quantity": 1, "cart": str(victim_cart.id)},
+        format="json",
     )
     assert res.status_code == 201
     assert victim_cart.items.count() == 0

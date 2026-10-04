@@ -7,6 +7,7 @@ from accounts.models import Address, OTP
 
 User = get_user_model()
 
+
 @pytest.mark.django_db
 def test_register_and_login_and_me():
     """
@@ -18,16 +19,17 @@ def test_register_and_login_and_me():
     c = APIClient()
 
     # Register
-    r = c.post(reverse("accounts:register"), {
-        "username": "ali",
-        "email": "Ali@Example.com",
-        "phone_number": "09120000000",
-        "password": "StrongPass123!"
-    }, format="json")
+    r = c.post(
+        reverse("accounts:register"),
+        {"username": "ali", "email": "Ali@Example.com", "phone_number": "09120000000", "password": "StrongPass123!"},
+        format="json",
+    )
     assert r.status_code in (200, 201)
 
     # Login (by email, case-insensitive)
-    r = c.post(reverse("accounts:login"), {"identifier": "ali@example.com", "password": "StrongPass123!"}, format="json")
+    r = c.post(
+        reverse("accounts:login"), {"identifier": "ali@example.com", "password": "StrongPass123!"}, format="json"
+    )
     assert r.status_code == 200
     access = r.data["access"]
     c.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
@@ -37,6 +39,7 @@ def test_register_and_login_and_me():
     assert r.status_code == 200
     assert r.data["email"] == "ali@example.com"
 
+
 @pytest.mark.django_db
 def test_address_crud_and_default():
     """
@@ -45,25 +48,22 @@ def test_address_crud_and_default():
     The set_default action switches the default back.
     """
     user = User.objects.create_user(username="u", email="u@x.com", password="pass12345")
-    c = APIClient(); c.force_authenticate(user)
+    c = APIClient()
+    c.force_authenticate(user)
 
-    r1 = c.post("/api/accounts/addresses/", {
-        "line1": "Tehran, 1",
-        "city": "Tehran",
-        "postal_code": "11111",
-        "is_default": True,
-        "purpose": "shipping"
-    }, format="json")
+    r1 = c.post(
+        "/api/accounts/addresses/",
+        {"line1": "Tehran, 1", "city": "Tehran", "postal_code": "11111", "is_default": True, "purpose": "shipping"},
+        format="json",
+    )
     assert r1.status_code == 201
     first_id = r1.data["id"]
 
-    r2 = c.post("/api/accounts/addresses/", {
-        "line1": "Tehran, 2",
-        "city": "Tehran",
-        "postal_code": "22222",
-        "is_default": True,
-        "purpose": "shipping"
-    }, format="json")
+    r2 = c.post(
+        "/api/accounts/addresses/",
+        {"line1": "Tehran, 2", "city": "Tehran", "postal_code": "22222", "is_default": True, "purpose": "shipping"},
+        format="json",
+    )
     assert r2.status_code == 201
     assert Address.objects.get(pk=r2.data["id"]).is_default is True
     assert Address.objects.get(pk=first_id).is_default is False
@@ -89,23 +89,14 @@ def test_otp_flow():
     """
     user = User.objects.create_user(username="test", email="test@example.com", password="pass123")
     c = APIClient()
-    
-    
-    r1 = c.post(reverse("accounts:otp_request"), {
-        "target": "test@example.com",
-        "purpose": "login"
-    })
+
+    r1 = c.post(reverse("accounts:otp_request"), {"target": "test@example.com", "purpose": "login"})
     assert r1.status_code == 200
     otp = OTP.objects.filter(target="test@example.com", purpose="login").order_by("-created_at").first()
     assert otp is not None
     code = otp.code
-    
 
-    r2 = c.post(reverse("accounts:otp_verify"), {
-        "target": "test@example.com", 
-        "code": code,
-        "purpose": "login"
-    })
+    r2 = c.post(reverse("accounts:otp_verify"), {"target": "test@example.com", "code": code, "purpose": "login"})
     assert r2.status_code == 200
     assert "access" in r2.data
 

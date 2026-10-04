@@ -1,4 +1,5 @@
 """Read-side helpers for the catalog (HackSoft "selectors")."""
+
 from django.db.models import Avg, Count, DecimalField, IntegerField, Min, OuterRef, Prefetch, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
 
@@ -26,9 +27,7 @@ def product_list_queryset():
 
     items = _store_items_of_product()
     stock = items.order_by().values("variant__product").annotate(s=Sum("stock")).values("s")
-    best_price = (
-        items.filter(stock__gt=0).order_by().values("variant__product").annotate(p=Min("price")).values("p")
-    )
+    best_price = items.filter(stock__gt=0).order_by().values("variant__product").annotate(p=Min("price")).values("p")
     reviews = ProductReview.objects.filter(product=OuterRef("pk")).order_by().values("product")
     rating = reviews.annotate(a=Avg("rating")).values("a")
     reviews_count = reviews.annotate(c=Count("id")).values("c")

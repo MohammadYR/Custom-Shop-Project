@@ -1,4 +1,5 @@
 """Store profile details and addresses (spec: a seller has one store with details and an address)."""
+
 import pytest
 from rest_framework.test import APIClient
 
@@ -9,7 +10,9 @@ pytestmark = pytest.mark.django_db
 
 def test_store_exposes_profile_and_addresses(api_client, make_store):
     store = make_store(phone_number="02112345678", email="shop@example.com")
-    StoreAddress.objects.create(store=store, line1="Valiasr St", city="Tehran", postal_code="1234567890", is_primary=True)
+    StoreAddress.objects.create(
+        store=store, line1="Valiasr St", city="Tehran", postal_code="1234567890", is_primary=True
+    )
     res = api_client.get(f"/api/marketplace/stores/{store.id}/")
     assert res.status_code == 200
     body = res.json()

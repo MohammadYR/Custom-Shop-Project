@@ -3,8 +3,13 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView, TokenObtainPairView
 from .views import (
-    RegisterView, LoginView, MeView, ChangePasswordView,
-    AddressViewSet, OTPRequestView, OTPVerifyView,
+    RegisterView,
+    LoginView,
+    MeView,
+    ChangePasswordView,
+    AddressViewSet,
+    OTPRequestView,
+    OTPVerifyView,
     RegisterAsSellerView,
 )
 

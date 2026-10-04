@@ -76,13 +76,18 @@ class ProductAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     @admin.display(description="Image")
     def image_thumb(self, obj):
         if obj.image:
-            return format_html('<img src="{}" style="height:38px;width:auto;border-radius:4px;object-fit:cover"/>', obj.image.url)
+            return format_html(
+                '<img src="{}" style="height:38px;width:auto;border-radius:4px;object-fit:cover"/>', obj.image.url
+            )
         return "—"
 
     @admin.display(description="Preview")
     def image_preview(self, obj):
         if obj.image:
-            return format_html('<img src="{}" style="max-height:200px;width:auto;border:1px solid #eee;padding:4px;border-radius:6px"/>', obj.image.url)
+            return format_html(
+                '<img src="{}" style="max-height:200px;width:auto;border:1px solid #eee;padding:4px;border-radius:6px"/>',
+                obj.image.url,
+            )
         return "—"
 
     @admin.display(description=_("Price"))
