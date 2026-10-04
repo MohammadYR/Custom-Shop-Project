@@ -116,7 +116,7 @@ else:
             "NAME": env_str("DB_NAME", "shopdb"),
             "USER": env_str("DB_USER", "shopuser"),
             "PASSWORD": env_str("DB_PASSWORD", ""),
-            "HOST": env_str("DB_HOST", "localhost"),
+            "HOST": env_str("DB_HOST", "127.0.0.1"),
             "PORT": env_str("DB_PORT", "5432"),
             # Persistent connections with a health check before reuse.
             "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
