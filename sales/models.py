@@ -131,8 +131,17 @@ class Order(BaseModel):
         raise NotImplementedError("Order records cannot be deleted.")
 
 
+class OrderItemStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    SHIPPED = "SHIPPED", "Shipped"
+    DELIVERED = "DELIVERED", "Delivered"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
 class OrderItem(BaseModel):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
+    # Fulfilment status of this line, managed by the seller (see sales.services).
+    status = models.CharField(max_length=12, choices=OrderItemStatus.choices, default=OrderItemStatus.PENDING)
     store_item = models.ForeignKey("marketplace.StoreItem", on_delete=models.PROTECT, related_name="order_items")
     # Price snapshot at the time the order was placed (after discount = what is charged).
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)

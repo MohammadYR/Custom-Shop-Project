@@ -8,7 +8,14 @@ from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Q, Count
 
 from core.admin import SoftDeleteAdminMixin
 from .models import Cart, CartItem, Order, OrderItem
-from .services import InvalidOrderTransition, cancel_order, create_order_from_cart, mark_order_paid
+from .models import OrderItemStatus
+from .services import (
+    InvalidOrderTransition,
+    cancel_order,
+    change_order_item_status,
+    create_order_from_cart,
+    mark_order_paid,
+)
 from payments.models import Payment
 
 
@@ -45,9 +52,9 @@ class HasItemsFilter(admin.SimpleListFilter):
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
-    fields = ("store_item", "unit_price", "quantity", "subtotal_display")
+    fields = ("store_item", "status", "unit_price", "quantity", "subtotal_display")
     # Order items are an immutable snapshot created by checkout.
-    readonly_fields = ("store_item", "unit_price", "quantity", "subtotal_display")
+    readonly_fields = ("store_item", "status", "unit_price", "quantity", "subtotal_display")
     can_delete = False
 
     def has_add_permission(self, request, obj=None):
@@ -284,7 +291,7 @@ class OrderAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
-    list_display = ("id", "order", "store_item", "unit_price", "quantity", "subtotal")
+    list_display = ("id", "order", "store_item", "status", "unit_price", "quantity", "subtotal")
     search_fields = (
         "order__user__email",
         "store_item__sku",
@@ -292,5 +299,29 @@ class OrderItemAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     )
     autocomplete_fields = ("order", "store_item")
     list_select_related = ("order__user", "store_item__variant__product")
-    list_filter = ("created_at",)
-    readonly_fields = ("created_at", "updated_at", "deleted_at")
+    list_filter = ("status", "created_at")
+    readonly_fields = ("status", "unit_price", "original_unit_price", "quantity", "created_at", "updated_at",
+                       "deleted_at")
+    actions = ("mark_shipped", "mark_delivered", "mark_items_cancelled")
+
+    def _set_status(self, request, queryset, new_status):
+        done, skipped = 0, 0
+        for item in queryset:
+            try:
+                change_order_item_status(item, new_status)
+                done += 1
+            except InvalidOrderTransition:
+                skipped += 1
+        self.message_user(request, _("{} items set to {}. {} skipped.").format(done, new_status, skipped))
+
+    @admin.action(description=_("Mark selected items as SHIPPED"))
+    def mark_shipped(self, request, queryset):
+        self._set_status(request, queryset, OrderItemStatus.SHIPPED)
+
+    @admin.action(description=_("Mark selected items as DELIVERED"))
+    def mark_delivered(self, request, queryset):
+        self._set_status(request, queryset, OrderItemStatus.DELIVERED)
+
+    @admin.action(description=_("Cancel selected items (restock)"))
+    def mark_items_cancelled(self, request, queryset):
+        self._set_status(request, queryset, OrderItemStatus.CANCELLED)

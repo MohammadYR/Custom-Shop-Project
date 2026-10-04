@@ -63,7 +63,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ["id", "order", "store_item", "store_item_detail", "unit_price", "original_unit_price",
+        fields = ["id", "order", "store_item", "store_item_detail", "status", "unit_price", "original_unit_price",
                   "quantity", "subtotal", "created_at", "updated_at"]
         # Order items are created only by checkout and never edited through the API.
         read_only_fields = fields
