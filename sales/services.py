@@ -134,8 +134,20 @@ def _queue_low_stock_alerts(locked: dict, quantities: dict) -> None:
             )
 
 
+def _resolve_shipping_address(user, address):
+    from accounts.models import Address
+
+    if address is None:
+        address = Address.objects.filter(user=user).order_by("-is_default", "-created_at").first()
+    elif address.user_id != user.pk or address.is_deleted:
+        raise CheckoutError("Invalid shipping address.")
+    if address is None:
+        raise CheckoutError("Add a shipping address before checkout.")
+    return address
+
+
 @transaction.atomic
-def create_order_from_cart(cart: Cart) -> Order:
+def create_order_from_cart(cart: Cart, *, address=None) -> Order:
     """Turn ``cart`` into a PENDING order.
 
     - Locks the involved StoreItem rows (SELECT ... FOR UPDATE, in pk order to
@@ -144,6 +156,8 @@ def create_order_from_cart(cart: Cart) -> Order:
     - Creates the order items with bulk_create and a Payment row.
     - Empties the cart (hard delete).
 
+    - Snapshots the shipping address (``address`` or the user's default one).
+
     Raises CheckoutError and rolls everything back on any problem.
     """
     from payments.models import Payment  # payments depends on sales; avoid an import cycle
@@ -151,6 +165,7 @@ def create_order_from_cart(cart: Cart) -> Order:
     cart_items = list(cart.items.all())
     if not cart_items:
         raise CheckoutError("Your cart is empty.")
+    shipping = _resolve_shipping_address(cart.user, address)
 
     quantities = {ci.store_item_id: ci.quantity for ci in cart_items}
     locked = {
@@ -168,7 +183,13 @@ def create_order_from_cart(cart: Cart) -> Order:
         if quantity > store_item.stock:
             raise CheckoutError(f"Not enough stock for SKU {store_item.sku}")
 
-    order = Order.objects.create(user=cart.user)
+    order = Order.objects.create(
+        user=cart.user,
+        shipping_address=shipping,
+        shipping_line1=shipping.line1,
+        shipping_city=shipping.city,
+        shipping_postal_code=shipping.postal_code,
+    )
 
     for pk, quantity in quantities.items():
         updated = StoreItem.objects.filter(pk=pk, stock__gte=quantity).update(stock=F("stock") - quantity)

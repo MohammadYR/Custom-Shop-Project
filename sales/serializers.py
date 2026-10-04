@@ -73,6 +73,10 @@ class OrderItemSerializer(serializers.ModelSerializer):
         return obj.subtotal
 
 
+class CheckoutSerializer(serializers.Serializer):
+    address = serializers.UUIDField(required=False, help_text="Address id; defaults to your default address")
+
+
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     total_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -80,7 +84,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ["id", "user", "status", "items", "total_discount", "total_price", "paid_at", "created_at",
-                  "updated_at"]
+        fields = ["id", "user", "status", "items", "total_discount", "total_price",
+                  "shipping_address", "shipping_line1", "shipping_city", "shipping_postal_code",
+                  "paid_at", "created_at", "updated_at"]
         # status changes only through the state machine (cancel action / payment verify).
         read_only_fields = fields

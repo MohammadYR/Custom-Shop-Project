@@ -11,6 +11,7 @@ from .serializers import (
     CartAddItemSerializer,
     CartItemSerializer,
     CartSerializer,
+    CheckoutSerializer,
     OrderItemSerializer,
     OrderSerializer,
 )
@@ -60,15 +61,35 @@ class CartViewSet(GenericViewSet):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return _cart_response(request.user)
 
-    @extend_schema(request=None, responses={201: OrderSerializer, 400: OpenApiResponse(description="Empty cart / stock")})
+    @extend_schema(
+        request=CheckoutSerializer,
+        responses={201: OrderSerializer, 400: OpenApiResponse(description="Empty cart / stock / no address")},
+    )
     @action(detail=False, methods=["post"], url_path="checkout")
     def checkout(self, request):
-        try:
-            order = create_order_from_cart(get_or_create_cart(request.user))
-        except CheckoutError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        order = order_queryset().get(pk=order.pk)
-        return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+        return checkout_response(request)
+
+
+def checkout_response(request):
+    """Shared by /api/sales/cart/checkout/ and /api/orders/checkout/."""
+    from accounts.models import Address
+
+    ser = CheckoutSerializer(data=request.data)
+    ser.is_valid(raise_exception=True)
+    address = None
+    if ser.validated_data.get("address"):
+        address = Address.objects.filter(pk=ser.validated_data["address"], user=request.user).first()
+        if address is None:
+            return Response({"address": ["Address not found."]}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        order = create_order_from_cart(get_or_create_cart(request.user), address=address)
+    except CheckoutError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    order = order_queryset().get(pk=order.pk)
+    data = OrderSerializer(order).data
+    # Next step for the client: start the payment for this order.
+    data["payment_url"] = f"/api/payments/{order.pk}/start/"
+    return Response(data, status=status.HTTP_201_CREATED)
 
 
 @extend_schema(tags=["Cart & Orders"])

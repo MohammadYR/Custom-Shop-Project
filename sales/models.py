@@ -98,6 +98,15 @@ class Order(BaseModel):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders")
     status = models.CharField(max_length=12, choices=OrderStatus.choices, default=OrderStatus.PENDING)
 
+    # Shipping address snapshot taken at checkout (later edits of the user's
+    # address book do not change placed orders).
+    shipping_address = models.ForeignKey(
+        "accounts.Address", on_delete=models.SET_NULL, null=True, blank=True, related_name="orders"
+    )
+    shipping_line1 = models.CharField(max_length=200, blank=True)
+    shipping_city = models.CharField(max_length=100, blank=True)
+    shipping_postal_code = models.CharField(max_length=20, blank=True)
+
     payment_gateway = models.CharField(max_length=32, blank=True, default="zarinpal")
     payment_authority = models.CharField(max_length=64, blank=True, null=True)
     payment_ref_id = models.CharField(max_length=64, blank=True, null=True)
