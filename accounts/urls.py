@@ -14,7 +14,6 @@ router = DefaultRouter()
 router.register(r"addresses", AddressViewSet, basename="address")
 
 urlpatterns = [
-    # موجود
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", LoginView.as_view(), name="login"),
     path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
@@ -25,15 +24,4 @@ urlpatterns = [
     path("otp/verify/", OTPVerifyView.as_view(), name="otp_verify"),
     path("", include(router.urls)),
     path("me/register_as_seller/", RegisterAsSellerView.as_view(), name="register_as_seller"),
-
-    # /api/myuser/ → پروفایل من
-    # path("/", MeView.as_view()),  # نگهدار: مسیر اصلی
-    # path("/myuser/", MeView.as_view(), name="myuser_me"),  # ← alias
-
-    # # /api/myuser/address/ → آدرس‌ها
-    # path("/myuser/", include(([
-    #     path("address/", include((router.urls, "addresses"))),  # alias روت آدرس‌ها
-    # ], "myuser"), namespace="myuser")),
-
-    # /api/myuser/register_as_seller/ → ثبت‌نام فروشنده
 ]

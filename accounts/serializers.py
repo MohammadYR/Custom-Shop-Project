@@ -1,24 +1,44 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from django.db.models import Q
-# from django.db import transaction
 from rest_framework import serializers
-# from rest_framework.validators import UniqueValidator
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import Address, Profile
+
+from .models import OTP, Address, Profile
 
 User = get_user_model()
 
 
+def _validate_unique_ci(field: str, value: str, instance=None) -> str:
+    """Case-insensitive uniqueness check (values are stored lower-cased)."""
+    value = value.strip().lower()
+    qs = User.objects.filter(**{f"{field}__iexact": value})
+    if instance is not None:
+        qs = qs.exclude(pk=instance.pk)
+    if qs.exists():
+        raise serializers.ValidationError(f"A user with that {field} already exists.")
+    return value
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
-
     password = serializers.CharField(write_only=True, min_length=8)
 
     class Meta:
         model = User
         fields = ("username", "email", "phone_number", "password")
+
+    def validate_username(self, value):
+        return _validate_unique_ci("username", value)
+
+    def validate_email(self, value):
+        return _validate_unique_ci("email", value)
+
+    def validate(self, attrs):
+        candidate = User(username=attrs.get("username"), email=attrs.get("email"))
+        validate_password(attrs["password"], user=candidate)
+        return attrs
 
     def create(self, validated_data):
         password = validated_data.pop("password")
@@ -39,10 +59,7 @@ class LoginResponseSerializer(serializers.Serializer):
 
 
 class LoginCoreSerializer(LoginRequestSerializer):
-    """
-    لاجیک واقعیِ لاگین: کاربر را با email/username/phone پیدا می‌کنیم،
-    پسورد را چک می‌کنیم، و توکن JWT برمی‌گردانیم.
-    """
+    """Find the user by email/username/phone, check the password, return JWTs."""
 
     def validate(self, attrs):
         identifier = attrs.get("identifier")
@@ -51,22 +68,17 @@ class LoginCoreSerializer(LoginRequestSerializer):
             raise ValidationError({"detail": "identifier و password الزامی‌اند."})
 
         user = User.objects.filter(
-            Q(email__iexact=identifier) |
-            Q(username__iexact=identifier) |
-            Q(phone_number=identifier)
+            Q(email__iexact=identifier) | Q(username__iexact=identifier) | Q(phone_number=identifier)
         ).first()
 
         if not user or not user.check_password(password):
             raise AuthenticationFailed("اطلاعات ورود نامعتبر است.")
 
-        if not getattr(user, "is_active", True):
+        if not user.is_active:
             raise AuthenticationFailed("حساب کاربری غیرفعال است.")
 
         refresh = RefreshToken.for_user(user)
-        return {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-        }
+        return {"access": str(refresh.access_token), "refresh": str(refresh)}
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -76,12 +88,17 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class UserMeSerializer(serializers.ModelSerializer):
+    """Own profile. Identity and role fields cannot be changed by the user."""
+
     profile = ProfileSerializer(read_only=True)
 
     class Meta:
         model = User
         fields = ("id", "username", "email", "phone_number", "is_seller", "profile")
+        read_only_fields = ("id", "username", "is_seller")
 
+    def validate_email(self, value):
+        return _validate_unique_ci("email", value, instance=self.instance)
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -92,6 +109,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         user = self.context["request"].user
         if not user.check_password(attrs["old_password"]):
             raise serializers.ValidationError({"old_password": "رمز قبلی اشتباه است."})
+        validate_password(attrs["new_password"], user=user)
         return attrs
 
     def save(self, **kwargs):
@@ -108,20 +126,12 @@ class AddressSerializer(serializers.ModelSerializer):
 
 
 class AddressCreateUpdateSerializer(serializers.ModelSerializer):
+    """Setting is_default=True automatically un-sets the previous default
+    (see accounts.signals.ensure_single_default_address)."""
+
     class Meta:
         model = Address
         fields = ("id", "line1", "city", "postal_code", "is_default", "purpose")
-
-    def validate(self, attrs):
-        # تضمین فقط یک آدرس default در سطح اپ + در سطح DB (Meta constraint)
-        user = self.context["request"].user
-        if attrs.get("is_default"):
-            qs = Address.objects.filter(user=user, is_default=True)
-            if self.instance:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise serializers.ValidationError({"is_default": "شما یک آدرس پیش‌فرض دارید."})
-        return attrs
 
     def create(self, validated_data):
         validated_data["user"] = self.context["request"].user
@@ -129,41 +139,40 @@ class AddressCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class OTPRequestSerializer(serializers.Serializer):
-    target = serializers.CharField(required=True)
-    purpose = serializers.ChoiceField(
-        choices=[
-            ("login", "Login"),
-            ("register", "Register"),
-            ("reset_password", "Reset Password"),
-            ("verify_phone", "Verify Phone"),
-            ("verify_email", "Verify Email"),
-        ],
-        default="login",
-    )
+    target = serializers.CharField(required=True, max_length=120)
+    purpose = serializers.ChoiceField(choices=OTP.PURPOSES, default="login")
 
 
 class OTPVerifySerializer(serializers.Serializer):
-    target = serializers.CharField(required=True)
+    target = serializers.CharField(required=True, max_length=120)
     code = serializers.CharField(max_length=6, required=True)
-    purpose = serializers.ChoiceField(
-        choices=[
-            ("login", "Login"),
-            ("register", "Register"),
-            ("reset_password", "Reset Password"),
-            ("verify_phone", "Verify Phone"),
-            ("verify_email", "Verify Email"),
-        ],
-        default="login",
-    )
+    purpose = serializers.ChoiceField(choices=OTP.PURPOSES, default="login")
 
 
 # Documentation helpers for OpenAPI (no direct runtime dependency)
 class OTPRequestResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
-    code = serializers.CharField(required=False)
+    code = serializers.CharField(required=False, help_text="Only returned when DEBUG=True.")
 
 
 class OTPVerifyResponseSerializer(serializers.Serializer):
     message = serializers.CharField(required=False)
     access = serializers.CharField(required=False)
     refresh = serializers.CharField(required=False)
+
+
+class SellerStoreInputSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150)
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class RegisterAsSellerSerializer(serializers.Serializer):
+    display_name = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    store = SellerStoreInputSerializer(required=False)
+
+    def validate_store(self, value):
+        from marketplace.models import Store
+
+        if value and Store.objects.filter(name__iexact=value["name"]).exists():
+            raise serializers.ValidationError({"name": "A store with this name already exists."})
+        return value
