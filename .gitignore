@@ -7,6 +7,12 @@ docker-compose.test.yml
 
 config/media/
 config/staticfiles/
+/media/
+/staticfiles/
+
+# --- Tooling / AI assistants ---
+.claude/
+graphify-out/
 
 
 # Byte-compiled / optimized / DLL files
