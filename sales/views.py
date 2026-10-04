@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ReadOnlyModelViewSet
 
-from .models import CartItem, OrderItem
+from .models import Cart, CartItem, Order, OrderItem
 from .serializers import (
     CartAddItemSerializer,
     CartItemSerializer,
@@ -42,6 +42,8 @@ class CartViewSet(GenericViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):  # schema generation
+            return Cart.objects.none()
         return cart_queryset().filter(user=self.request.user)
 
     def list(self, request, *args, **kwargs):
@@ -84,6 +86,8 @@ class CartItemViewSet(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):  # schema generation
+            return CartItem.objects.none()
         return CartItem.objects.filter(cart__user=self.request.user).select_related(
             "cart", "store_item", "store_item__store", "store_item__variant", "store_item__variant__product"
         )
@@ -120,6 +124,8 @@ class OrderViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):  # schema generation
+            return Order.objects.none()
         return order_queryset().filter(user=self.request.user).order_by("-created_at")
 
     @extend_schema(request=None, responses={200: OrderSerializer, 400: OpenApiResponse(description="Not PENDING")})
@@ -141,6 +147,8 @@ class OrderItemViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):  # schema generation
+            return OrderItem.objects.none()
         return OrderItem.objects.filter(order__user=self.request.user).select_related(
             "order", "store_item", "store_item__store", "store_item__variant", "store_item__variant__product"
         )
