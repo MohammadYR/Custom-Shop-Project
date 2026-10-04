@@ -18,7 +18,7 @@ def test_register_and_login_and_me():
     c = APIClient()
 
     # Register
-    r = c.post(reverse("register"), {
+    r = c.post(reverse("accounts:register"), {
         "username": "ali",
         "email": "Ali@Example.com",
         "phone_number": "09120000000",
@@ -27,13 +27,13 @@ def test_register_and_login_and_me():
     assert r.status_code in (200, 201)
 
     # Login (by email, case-insensitive)
-    r = c.post(reverse("login"), {"identifier": "ali@example.com", "password": "StrongPass123!"}, format="json")
+    r = c.post(reverse("accounts:login"), {"identifier": "ali@example.com", "password": "StrongPass123!"}, format="json")
     assert r.status_code == 200
     access = r.data["access"]
     c.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
 
     # Me
-    r = c.get(reverse("me"))
+    r = c.get(reverse("accounts:me"))
     assert r.status_code == 200
     assert r.data["email"] == "ali@example.com"
 
@@ -100,7 +100,7 @@ def test_otp_flow():
     c = APIClient()
     
     
-    r1 = c.post(reverse("otp_request"), {
+    r1 = c.post(reverse("accounts:otp_request"), {
         "target": "test@example.com",
         "purpose": "login"
     })
@@ -110,7 +110,7 @@ def test_otp_flow():
     code = otp.code
     
 
-    r2 = c.post(reverse("otp_verify"), {
+    r2 = c.post(reverse("accounts:otp_verify"), {
         "target": "test@example.com", 
         "code": code,
         "purpose": "login"
@@ -121,7 +121,13 @@ def test_otp_flow():
 
 @pytest.mark.django_db
 def test_unique_default_address_db_constraint():
-    u = User.objects.create_user(username="a", password="p")
-    Address.objects.create(user=u, line1="X", is_default=True)
+    """The partial unique constraint is the last line of defence.
+
+    The pre_save signal un-sets the previous default on save(), so bypass it
+    with a queryset update() to hit the database constraint directly.
+    """
+    u = User.objects.create_user(username="a", email="a@example.com", password="p")
+    Address.objects.create(user=u, line1="X", city="T", postal_code="1", is_default=True)
+    second = Address.objects.create(user=u, line1="Y", city="T", postal_code="2", is_default=False)
     with pytest.raises(IntegrityError):
-        Address.objects.create(user=u, line1="Y", is_default=True)
+        Address.objects.filter(pk=second.pk).update(is_default=True)

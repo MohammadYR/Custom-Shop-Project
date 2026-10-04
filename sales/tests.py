@@ -30,7 +30,7 @@ def test_create_order_from_cart_success():
 
     item = StoreItem.objects.create(store=store, variant=var, sku="SKU1", price=Decimal("25.00"), stock=5)
 
-    cart = Cart.objects.create(user=user)
+    cart = Cart.objects.get(user=user)  # created by the post_save signal
     CartItem.objects.create(cart=cart, store_item=item, quantity=2)
 
     order = create_order_from_cart(cart)
@@ -67,7 +67,7 @@ def test_create_order_from_cart_insufficient_stock_raises():
 
     item = StoreItem.objects.create(store=store, variant=var, sku="SKU2", price=Decimal("12.00"), stock=1)
 
-    cart = Cart.objects.create(user=user)
+    cart = Cart.objects.get(user=user)  # created by the post_save signal
     CartItem.objects.create(cart=cart, store_item=item, quantity=3)
 
     with pytest.raises(ValueError):

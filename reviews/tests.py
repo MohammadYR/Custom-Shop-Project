@@ -9,7 +9,7 @@ def test_product_review_crud_and_uniqueness():
     User = get_user_model()
     u = User.objects.create_user(username="u", email="u@ex.com", password="p")
     cat = Category.objects.create(name="Cat")
-    p = Product.objects.create(title="Phone", category=cat)
+    p = Product.objects.create(title="Phone", category=cat, price=100)
 
     c = APIClient(); c.force_authenticate(user=u)
 

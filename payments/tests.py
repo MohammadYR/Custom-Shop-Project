@@ -37,7 +37,7 @@ def test_verify_success_marks_order_paid(monkeypatch):
     monkeypatch.setattr(pv.requests, "post", fake_post)
 
     c = APIClient()
-    r = c.get(reverse("payments-verify"), {"Status": "OK", "Authority": "AUTH123"})
+    r = c.get(reverse("payments:payments-verify"), {"Status": "OK", "Authority": "AUTH123"})
     assert r.status_code == 200
 
     order.refresh_from_db()
@@ -60,7 +60,7 @@ def test_verify_cancel_marks_order_cancelled():
     order = Order.objects.create(user=user, payment_authority="AUTH999")
 
     c = APIClient()
-    r = c.get(reverse("payments-verify"), {"Status": "NOK", "Authority": "AUTH999"})
+    r = c.get(reverse("payments:payments-verify"), {"Status": "NOK", "Authority": "AUTH999"})
     assert r.status_code == 200
     order.refresh_from_db()
     assert order.status == "CANCELLED"

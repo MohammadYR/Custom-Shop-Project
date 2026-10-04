@@ -14,7 +14,7 @@ def test_mystore_lists_only_my_stores():
     Store.objects.create(owner=s2, name="B-Shop")
 
     client = APIClient(); client.force_authenticate(user=u1)
-    res = client.get("/api/marketplace/..//stores/")   # alias mystore
+    res = client.get("/api/marketplace/stores/mine/")
     assert res.status_code == 200
     names = [st["name"] for st in res.json()]
     assert names == ["A-Shop"]

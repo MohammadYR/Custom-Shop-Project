@@ -11,7 +11,7 @@ def test_register_as_seller_sets_flag_and_optionally_creates_store():
     # login via JWT (ساده: ایجاد دستی توکن در تست یا login endpoint)
     client.force_authenticate(user=u)
 
-    url = "/api/accounts/../register_as_seller/"
+    url = "/api/accounts/me/register_as_seller/"
     payload = {"display_name":"Owner", "store":{"name":"My Great Shop"}}
     res = client.post(url, payload, format="json")
     assert res.status_code == 201
