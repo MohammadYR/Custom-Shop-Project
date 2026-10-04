@@ -1,6 +1,6 @@
 from django.db import transaction
 from rest_framework import decorators, response, status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 
@@ -32,8 +32,10 @@ class SellerViewSet(ModelViewSet):
 
 
 class StoreViewSet(ModelViewSet):
-    queryset = Store.objects.select_related("owner", "owner__user").all()
+    queryset = Store.objects.select_related("owner", "owner__user").prefetch_related("addresses").all()
     serializer_class = StoreSerializer
+    search_fields = ["name", "description"]
+    ordering_fields = ["name", "created_at"]
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
@@ -52,6 +54,8 @@ class StoreViewSet(ModelViewSet):
         seller = getattr(self.request.user, "seller_profile", None)
         if not seller:
             raise PermissionDenied("Create a seller profile first.")
+        if seller.stores.exists():  # spec: a seller has exactly one store
+            raise ValidationError({"detail": "A seller can only have one store."})
         serializer.save(owner=seller)
 
     @decorators.action(detail=False, methods=["get"], url_path="mine", permission_classes=[IsAuthenticated])

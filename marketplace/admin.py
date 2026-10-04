@@ -4,7 +4,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from core.admin import SoftDeleteAdminMixin
-from .models import Seller, Store, StoreItem
+from .models import Seller, Store, StoreAddress, StoreItem
 
 class StoreInline(admin.TabularInline):
     model = Store
@@ -51,6 +51,12 @@ class StoreItemInline(admin.TabularInline):
     autocomplete_fields = ("variant",)
 
 
+class StoreAddressInline(admin.TabularInline):
+    model = StoreAddress
+    extra = 0
+    fields = ("title", "line1", "city", "postal_code", "phone_number", "is_primary")
+
+
 class HasLogoFilter(admin.SimpleListFilter):
     title = _("Has logo")
     parameter_name = "has_logo"
@@ -78,7 +84,7 @@ class StoreAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     autocomplete_fields = ("owner",)
     list_editable = ("is_active",)
     date_hierarchy = "created_at"
-    inlines = (StoreItemInline,)
+    inlines = (StoreAddressInline, StoreItemInline)
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("owner", "owner__user").annotate(_items=Count("items", distinct=True))

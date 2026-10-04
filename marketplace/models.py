@@ -21,6 +21,10 @@ class Store(BaseModel):
     slug = models.SlugField(max_length=170, unique=True, blank=True, allow_unicode=True)
     description = models.TextField(blank=True)
     logo = models.ImageField(upload_to="stores/", blank=True, null=True)
+    # Public contact / profile details
+    phone_number = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True)
+    website = models.URLField(blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -40,6 +44,38 @@ class Store(BaseModel):
 
     def __str__(self):
         return self.name
+
+
+class StoreAddress(BaseModel):
+    """Physical address of a store (a store can have several, one primary)."""
+
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name="addresses")
+    title = models.CharField(max_length=80, blank=True, help_text="e.g. Main shop, Warehouse")
+    line1 = models.CharField(max_length=200)
+    city = models.CharField(max_length=100)
+    postal_code = models.CharField(max_length=20)
+    phone_number = models.CharField(max_length=20, blank=True)
+    is_primary = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-is_primary", "created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["store"],
+                condition=Q(is_primary=True, deleted_at__isnull=True),
+                name="uniq_primary_address_per_store",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.is_primary:
+            StoreAddress.objects.filter(store_id=self.store_id, is_primary=True).exclude(pk=self.pk).update(
+                is_primary=False
+            )
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.store_id}: {self.city}, {self.line1}"
 
 
 class StoreItem(BaseModel):

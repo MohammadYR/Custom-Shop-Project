@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from catalog.serializers import ProductVariantSerializer
 
-from .models import Seller, Store, StoreItem
+from .models import Seller, Store, StoreAddress, StoreItem
 
 
 class SellerSerializer(serializers.ModelSerializer):
@@ -13,14 +13,23 @@ class SellerSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "user", "created_at", "updated_at"]
 
 
+class StoreAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StoreAddress
+        fields = ["id", "title", "line1", "city", "postal_code", "phone_number", "is_primary", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
 class StoreSerializer(serializers.ModelSerializer):
     owner_detail = SellerSerializer(source="owner", read_only=True)
+    addresses = StoreAddressSerializer(many=True, read_only=True)
 
     class Meta:
         model = Store
         fields = [
             "id", "owner", "owner_detail",
             "name", "slug", "description", "logo",
+            "phone_number", "email", "website", "addresses",
             "is_active", "created_at", "updated_at",
         ]
         # The owner is the requesting seller (set in the view) and cannot be changed.
