@@ -130,15 +130,3 @@ class CategoryAdmin(SoftDeleteAdminMixin, admin.ModelAdmin):
     @admin.display(ordering="_products_count", description=_("Products"))
     def products_count(self, obj):
         return obj._products_count
-
-# @admin.register(SubCategory)
-# class SubCategoryAdmin(admin.ModelAdmin):
-#     list_display = ("name", "created_at")
-#     search_fields = ("name",)
-#     prepopulated_fields = {"slug": ("name",)}
-
-# @admin.register(Brand)
-# class BrandAdmin(admin.ModelAdmin):
-#     list_display = ("name", "created_at")
-#     search_fields = ("name",)
-#     prepopulated_fields = {"slug": ("name",)}
