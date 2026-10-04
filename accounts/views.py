@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import ProtectedError, Q
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import decorators, generics, permissions, response, status, viewsets
 from rest_framework.permissions import AllowAny
@@ -22,6 +22,8 @@ from .serializers import (
     OTPRequestSerializer,
     OTPVerifyResponseSerializer,
     OTPVerifySerializer,
+    AdminUserSerializer,
+    MyUserSerializer,
     RegisterAsSellerSerializer,
     RegisterSerializer,
     UserMeSerializer,
@@ -78,6 +80,55 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+@extend_schema(tags=["Profile"])
+class MyUserView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PATCH/DELETE /api/myuser/.
+
+    DELETE deactivates the account (is_active=False) instead of removing the
+    row, because orders and payments must be kept for accounting.
+    """
+
+    serializer_class = MyUserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        instance.save(update_fields=["is_active"])
+
+
+@extend_schema(tags=["Admin"])
+class AdminUserViewSet(viewsets.ModelViewSet):
+    """Staff only: list, view, edit and delete users (/api/admin/users/).
+
+    Users that have orders cannot be deleted (409); deactivate them with
+    PATCH {"is_active": false} instead.
+    """
+
+    queryset = User.objects.all().order_by("-date_joined")
+    serializer_class = AdminUserSerializer
+    permission_classes = [permissions.IsAdminUser]
+    http_method_names = ["get", "patch", "put", "delete", "head", "options"]
+    filterset_fields = ["is_active", "is_staff", "is_seller"]
+    search_fields = ["username", "email", "phone_number"]
+    ordering_fields = ["date_joined", "username", "email"]
+
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        if user.pk == request.user.pk:
+            return response.Response({"detail": "You cannot delete yourself."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user.delete()
+        except ProtectedError:
+            return response.Response(
+                {"detail": "This user has orders and cannot be deleted; deactivate it instead."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return response.Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(tags=["Profile"])

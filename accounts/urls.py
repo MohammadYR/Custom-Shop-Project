@@ -22,6 +22,9 @@ urlpatterns = [
     path("change-password/", ChangePasswordView.as_view(), name="change_password"),
     path("otp/request/", OTPRequestView.as_view(), name="otp_request"),
     path("otp/verify/", OTPVerifyView.as_view(), name="otp_verify"),
+    # Paths from the course spec (same views)
+    path("request-otp/", OTPRequestView.as_view(), name="request_otp"),
+    path("verify-otp/", OTPVerifyView.as_view(), name="verify_otp"),
     path("", include(router.urls)),
     path("me/register_as_seller/", RegisterAsSellerView.as_view(), name="register_as_seller"),
 ]
