@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    "django_filters",
     "django_extensions",
     "core",
     "accounts.apps.AccountsConfig",
@@ -193,6 +194,13 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
+    ),
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.DefaultPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_FILTER_BACKENDS": (
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
     ),
     # Rates for views that declare a ``throttle_scope`` (ScopedRateThrottle).
     "DEFAULT_THROTTLE_RATES": {

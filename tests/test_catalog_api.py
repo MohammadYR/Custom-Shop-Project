@@ -13,7 +13,7 @@ def test_category_crud(staff_client, api_client):
     # list (public)
     resp = api_client.get("/api/catalog/categories/")
     assert resp.status_code == 200
-    assert len(resp.data) == 1
+    assert resp.data["count"] == 1
     # retrieve (public)
     resp = api_client.get(f"/api/catalog/categories/{cid}/")
     assert resp.status_code == 200
@@ -27,7 +27,7 @@ def test_product_crud(staff_client, api_client):
     pid = resp.data["id"]
     resp = api_client.get("/api/catalog/products/")
     assert resp.status_code == 200
-    assert len(resp.data) == 1
+    assert resp.data["count"] == 1
     resp = api_client.get(f"/api/catalog/products/{pid}/")
     assert resp.status_code == 200
 
