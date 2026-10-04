@@ -1,18 +1,18 @@
-"""Settings used by the test-suite (pytest.ini points here).
+"""Settings used by the test-suite (pyproject.toml points pytest here).
 
-Tests must not need PostgreSQL, Redis, SMTP or network access.
+Tests run against PostgreSQL, like production, using the DB_* variables
+(Django creates and drops a separate ``test_<DB_NAME>`` database). Start one
+with ``docker compose up -d db``. Set DB_ENGINE=django.db.backends.sqlite3 to
+run against in-memory SQLite instead. Redis, SMTP and network access are never
+needed.
 """
 from .base import *  # noqa: F401,F403
 
 DEBUG = False
 SECRET_KEY = "test-secret-key-not-used-anywhere-else"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
-    }
-}
+if DB_ENGINE == "django.db.backends.sqlite3":  # noqa: F405
+    DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": ":memory:"}}  # noqa: F405
 
 CACHES = {
     "default": {

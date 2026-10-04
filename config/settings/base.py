@@ -100,18 +100,28 @@ CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", True)
 
 
 # ---------------------------------------------------------------------------
-# Database (SQLite by default, PostgreSQL via env)
+# Database: PostgreSQL
 # ---------------------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": env_str("DB_ENGINE", "django.db.backends.sqlite3"),
-        "NAME": env_str("DB_NAME", str(BASE_DIR / "db.sqlite3")),
-        "USER": env_str("DB_USER", ""),
-        "PASSWORD": env_str("DB_PASSWORD", ""),
-        "HOST": env_str("DB_HOST", ""),
-        "PORT": env_str("DB_PORT", ""),
+# Locally, `docker compose up -d db` starts a matching PostgreSQL server.
+# DB_ENGINE=django.db.backends.sqlite3 is still accepted for a quick try-out.
+DB_ENGINE = env_str("DB_ENGINE", "django.db.backends.postgresql")
+
+if DB_ENGINE == "django.db.backends.sqlite3":
+    DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": env_str("DB_NAME", str(BASE_DIR / "db.sqlite3"))}}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": env_str("DB_NAME", "shopdb"),
+            "USER": env_str("DB_USER", "shopuser"),
+            "PASSWORD": env_str("DB_PASSWORD", ""),
+            "HOST": env_str("DB_HOST", "localhost"),
+            "PORT": env_str("DB_PORT", "5432"),
+            # Persistent connections with a health check before reuse.
+            "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
+            "CONN_HEALTH_CHECKS": True,
+        }
     }
-}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
