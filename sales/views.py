@@ -1,82 +1,154 @@
-from rest_framework.viewsets import ModelViewSet
+from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework import mixins, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework import status
-from .models import Cart, CartItem, Order, OrderItem, create_order_from_cart
-from .serializers import CartSerializer, CartItemSerializer, OrderSerializer, OrderItemSerializer
+from rest_framework.viewsets import GenericViewSet, ReadOnlyModelViewSet
 
-class CartViewSet(ModelViewSet):
+from .models import Cart, CartItem, Order, OrderItem
+from .serializers import (
+    CartAddItemSerializer,
+    CartItemSerializer,
+    CartSerializer,
+    OrderItemSerializer,
+    OrderSerializer,
+)
+from .services import (
+    CartError,
+    CheckoutError,
+    InvalidOrderTransition,
+    add_to_cart,
+    cancel_order,
+    cart_queryset,
+    create_order_from_cart,
+    get_or_create_cart,
+    order_queryset,
+    remove_cart_item,
+    set_cart_item_quantity,
+)
+
+
+def _cart_response(user, http_status=status.HTTP_200_OK):
+    cart = cart_queryset().get(pk=get_or_create_cart(user).pk)
+    return Response(CartSerializer(cart).data, status=http_status)
+
+
+@extend_schema(tags=["Cart & Orders"])
+class CartViewSet(GenericViewSet):
+    """The requesting user's cart. There is exactly one cart per user."""
+
     serializer_class = CartSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Cart.objects.filter(user=self.request.user).prefetch_related("items__store_item")
+        if getattr(self, "swagger_fake_view", False):  # schema generation
+            return Cart.objects.none()
+        return cart_queryset().filter(user=self.request.user)
 
     def list(self, request, *args, **kwargs):
-        cart, _ = Cart.objects.get_or_create(user=request.user)
-        serializer = self.get_serializer(cart)
-        return Response(serializer.data)
+        return _cart_response(request.user)
 
+    @extend_schema(request=CartAddItemSerializer, responses={200: CartSerializer})
     @action(detail=False, methods=["post"], url_path="add-item")
     def add_item(self, request):
-        """
-        Add a store item to the user's cart.
+        ser = CartAddItemSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            add_to_cart(user=request.user, **ser.validated_data)
+        except CartError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return _cart_response(request.user)
 
-        Accepts a request body with the following parameters:
-        - store_item: The ID of the store item to add to the cart.
-        - quantity: The quantity of the store item to add to the cart.
-
-        Returns a response with the updated cart data.
-        """
-        cart, _ = Cart.objects.get_or_create(user=request.user)
-        serializer = CartItemSerializer(data={**request.data, "cart": cart.id})
-        serializer.is_valid(raise_exception=True)
-        item, created = CartItem.objects.get_or_create(
-            cart=cart,
-            store_item=serializer.validated_data["store_item"],
-            defaults={"quantity": serializer.validated_data["quantity"]},
-        )
-        if not created:
-            item.quantity += serializer.validated_data["quantity"]
-            item.save(update_fields=["quantity"])
-        return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
-
+    @extend_schema(request=None, responses={201: OrderSerializer, 400: OpenApiResponse(description="Empty cart / stock")})
     @action(detail=False, methods=["post"], url_path="checkout")
     def checkout(self, request):
-        """
-        Checkout the user's cart and create an order.
-
-        Returns a response with the created order data.
-
-        Raises a 400_BAD_REQUEST error if the cart is empty or if the total price of the cart is zero.
-        """
-        cart, _ = Cart.objects.get_or_create(user=request.user)
         try:
-            order = create_order_from_cart(cart)
-        except ValueError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            order = create_order_from_cart(get_or_create_cart(request.user))
+        except CheckoutError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        order = order_queryset().get(pk=order.pk)
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 
-class CartItemViewSet(ModelViewSet):
+@extend_schema(tags=["Cart & Orders"])
+class CartItemViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    GenericViewSet,
+):
+    """Lines of the requesting user's cart. Only ``quantity`` can be updated."""
+
     serializer_class = CartItemSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return CartItem.objects.filter(cart__user=self.request.user).select_related("store_item","cart")
+        if getattr(self, "swagger_fake_view", False):  # schema generation
+            return CartItem.objects.none()
+        return CartItem.objects.filter(cart__user=self.request.user).select_related(
+            "cart", "store_item", "store_item__store", "store_item__variant", "store_item__variant__product"
+        )
+
+    def create(self, request, *args, **kwargs):
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            item = add_to_cart(
+                user=request.user,
+                store_item=ser.validated_data["store_item"],
+                quantity=ser.validated_data["quantity"],
+            )
+        except CartError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(item).data, status=status.HTTP_201_CREATED)
+
+    def perform_update(self, serializer):
+        quantity = serializer.validated_data.get("quantity", serializer.instance.quantity)
+        try:
+            set_cart_item_quantity(serializer.instance, quantity)
+        except CartError as exc:
+            raise ValidationError({"quantity": str(exc)})
+
+    def perform_destroy(self, instance):
+        remove_cart_item(instance)
 
 
-class OrderViewSet(ModelViewSet):
+@extend_schema(tags=["Cart & Orders"])
+class OrderViewSet(ReadOnlyModelViewSet):
+    """The requesting user's orders (read-only). Status changes via ``cancel`` or payment verification."""
+
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Order.objects.filter(user=self.request.user).prefetch_related("items__store_item")
+        if getattr(self, "swagger_fake_view", False):  # schema generation
+            return Order.objects.none()
+        return order_queryset().filter(user=self.request.user).order_by("-created_at")
 
-class OrderItemViewSet(ModelViewSet):
+    @extend_schema(request=None, responses={200: OrderSerializer, 400: OpenApiResponse(description="Not PENDING")})
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        order = self.get_object()
+        try:
+            cancel_order(order)
+        except InvalidOrderTransition as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(OrderSerializer(order_queryset().get(pk=order.pk)).data)
+
+
+@extend_schema(tags=["Cart & Orders"])
+class OrderItemViewSet(ReadOnlyModelViewSet):
+    """Read-only: order items are created by checkout only."""
+
     serializer_class = OrderItemSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return OrderItem.objects.filter(order__user=self.request.user).select_related("order","store_item")
+        if getattr(self, "swagger_fake_view", False):  # schema generation
+            return OrderItem.objects.none()
+        return OrderItem.objects.filter(order__user=self.request.user).select_related(
+            "order", "store_item", "store_item__store", "store_item__variant", "store_item__variant__product"
+        )

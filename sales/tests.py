@@ -2,7 +2,8 @@ import pytest
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 
-from sales.models import Cart, CartItem, Order, OrderItem, create_order_from_cart
+from sales.models import Cart, CartItem, Order, OrderItem
+from sales.services import create_order_from_cart
 from marketplace.models import Seller, Store, StoreItem
 from catalog.models import Category, Product, ProductVariant
 
@@ -30,7 +31,7 @@ def test_create_order_from_cart_success():
 
     item = StoreItem.objects.create(store=store, variant=var, sku="SKU1", price=Decimal("25.00"), stock=5)
 
-    cart = Cart.objects.create(user=user)
+    cart = Cart.objects.get(user=user)  # created by the post_save signal
     CartItem.objects.create(cart=cart, store_item=item, quantity=2)
 
     order = create_order_from_cart(cart)
@@ -67,7 +68,7 @@ def test_create_order_from_cart_insufficient_stock_raises():
 
     item = StoreItem.objects.create(store=store, variant=var, sku="SKU2", price=Decimal("12.00"), stock=1)
 
-    cart = Cart.objects.create(user=user)
+    cart = Cart.objects.get(user=user)  # created by the post_save signal
     CartItem.objects.create(cart=cart, store_item=item, quantity=3)
 
     with pytest.raises(ValueError):

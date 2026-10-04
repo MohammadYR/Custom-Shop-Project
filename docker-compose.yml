@@ -53,7 +53,7 @@ services:
     volumes:
       - .:/app
       - ./staticfiles:/app/staticfiles
-      - ./config/media:/app/config/media
+      - ./media:/app/media
     ports:
       - "8000:8000"
     depends_on:

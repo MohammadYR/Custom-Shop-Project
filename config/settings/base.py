@@ -1,194 +1,213 @@
-from pathlib import Path
+"""
+Base settings shared by every environment (dev / test / prod).
+
+All secrets and deployment-specific values are read from environment
+variables. For local development put them in a git-ignored ``.env`` file at
+the repository root (see ``.env.example``).
+"""
 from datetime import timedelta
-import os
+from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+from celery.schedules import crontab
+from dotenv import load_dotenv
 
+from config.env import env_bool, env_int, env_list, env_str
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+# Repository root (the directory that contains manage.py).
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-(h9uh*#&f3&ddejqu=p$2)0@9t(j-d3#ns84dg$ez%#@bamfn^'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+# Load variables from .env (if present) without overriding real env vars.
+load_dotenv(BASE_DIR / ".env", override=False)
 
 
-# Application definition
+# ---------------------------------------------------------------------------
+# Core
+# ---------------------------------------------------------------------------
+# No default on purpose: every environment must provide its own key.
+# dev.py / test.py fall back to a throw-away key, prod.py refuses to start.
+SECRET_KEY = env_str("DJANGO_SECRET_KEY", "")
 
+DEBUG = env_bool("DJANGO_DEBUG", False)
+
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
+
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", [])
+
+
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
 INSTALLED_APPS = [
-    'jazzmin',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'corsheaders',
-    'rest_framework',
-    'drf_spectacular',
-    'rest_framework_simplejwt',
-    'django_extensions',
-    'accounts.apps.AccountsConfig',
-    'marketplace',
-    'catalog',
-    'sales',
-    'payments',
-    'reviews',
-    'core',
-    'rest_framework.authtoken',
-    'rest_framework_simplejwt.token_blacklist',
-
+    "jazzmin",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "corsheaders",
+    "rest_framework",
+    "drf_spectacular",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
+    "django_extensions",
+    "core",
+    "accounts.apps.AccountsConfig",
+    "marketplace",
+    "catalog",
+    "sales",
+    "payments",
+    "reviews",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'config.urls'
-
-CORS_ALLOW_ALL_ORIGINS = True
-
-CORS_ALLOW_CREDENTIALS = True
-
+ROOT_URLCONF = "config.urls"
+WSGI_APPLICATION = "config.wsgi.application"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR.parent / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
+
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", False)
+CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", [])
+CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", True)
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
+# ---------------------------------------------------------------------------
+# Database (SQLite by default, PostgreSQL via env)
+# ---------------------------------------------------------------------------
 DATABASES = {
     "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
-        "NAME": os.getenv("DB_NAME", BASE_DIR / "db.sqlite3"),
-        "USER": os.getenv("DB_USER", ""),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", ""),
-        "PORT": os.getenv("DB_PORT", ""),
+        "ENGINE": env_str("DB_ENGINE", "django.db.backends.sqlite3"),
+        "NAME": env_str("DB_NAME", str(BASE_DIR / "db.sqlite3")),
+        "USER": env_str("DB_USER", ""),
+        "PASSWORD": env_str("DB_PASSWORD", ""),
+        "HOST": env_str("DB_HOST", ""),
+        "PORT": env_str("DB_PORT", ""),
     }
 }
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": "maktab_shop",
-#         "USER": "maktab_user",
-#         "PASSWORD": "StrongPass!",
-#         "HOST": "127.0.0.1",
-#         "PORT": "5432",
-#     }
-# }
-
-
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+AUTH_USER_MODEL = "accounts.User"
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
+# ---------------------------------------------------------------------------
+# I18N
+# ---------------------------------------------------------------------------
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = env_str("DJANGO_TIME_ZONE", "UTC")
 USE_I18N = True
-
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
+# ---------------------------------------------------------------------------
+# Static & media
+# ---------------------------------------------------------------------------
 STATIC_URL = "/static/"
-MEDIA_URL = "/media/"
-
 STATIC_ROOT = BASE_DIR / "staticfiles"
-# Our settings module lives in config/settings/, so BASE_DIR points to config/.
-# Project-level static assets live in the sibling folder "static" at repo root
-# and we can also reuse some frontend/public assets (fonts, icons) directly.
-STATICFILES_DIRS = [
-    BASE_DIR.parent / "static",
-    BASE_DIR.parent / "frontend" / "frontend" / "public",
-]
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# ---------------------------------------------------------------------------
+# Cache / Redis
+# ---------------------------------------------------------------------------
+REDIS_URL = env_str("REDIS_URL", "redis://localhost:6379/0")
 
-AUTH_USER_MODEL = "accounts.User"
-
-# Inventory alert threshold (can be overridden via env)
-INVENTORY_LOW_STOCK_THRESHOLD = int(os.getenv("INVENTORY_LOW_STOCK_THRESHOLD", 3))
-
-REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    )
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
 }
 
-permission_classes = [
-    'rest_framework.permissions.IsAuthenticated',
-]
+
+# ---------------------------------------------------------------------------
+# Celery
+# ---------------------------------------------------------------------------
+CELERY_BROKER_URL = env_str("CELERY_BROKER_URL", REDIS_URL)
+CELERY_RESULT_BACKEND = env_str("CELERY_RESULT_BACKEND", REDIS_URL)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = env_str("CELERY_TIMEZONE", TIME_ZONE)
+CELERY_TASK_ALWAYS_EAGER = env_bool("CELERY_TASK_ALWAYS_EAGER", False)
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_BEAT_SCHEDULE = {
+    "prune-expired-otps-hourly": {
+        "task": "accounts.tasks.prune_expired_otps_task",
+        "schedule": crontab(minute=0),
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Business settings
+# ---------------------------------------------------------------------------
+INVENTORY_LOW_STOCK_THRESHOLD = env_int("INVENTORY_LOW_STOCK_THRESHOLD", 3)
+
+OTP_EXPIRY_MINUTES = env_int("OTP_EXPIRY_MINUTES", 5)
+OTP_MAX_ATTEMPTS = env_int("OTP_MAX_ATTEMPTS", 5)
+
+
+# ---------------------------------------------------------------------------
+# Django REST framework / JWT / OpenAPI
+# ---------------------------------------------------------------------------
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
+    # Rates for views that declare a ``throttle_scope`` (ScopedRateThrottle).
+    "DEFAULT_THROTTLE_RATES": {
+        "register": env_str("THROTTLE_RATE_REGISTER", "5/hour"),
+        "login": env_str("THROTTLE_RATE_LOGIN", "10/min"),
+        "otp_request": env_str("THROTTLE_RATE_OTP_REQUEST", "5/min"),
+        "otp_verify": env_str("THROTTLE_RATE_OTP_VERIFY", "10/min"),
+    },
+}
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env_int("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", 15)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=env_int("JWT_REFRESH_TOKEN_LIFETIME_DAYS", 7)),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -326,25 +345,68 @@ SPECTACULAR_SETTINGS = {
     ],
 }
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER","m.yousefi.r79@gmail.com")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD","wfvrrxkrsmqkfgku")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL","m.yousefi.r79@gmail.com")
 
-# Jazzmin admin customization
+# ---------------------------------------------------------------------------
+# Email (credentials come only from the environment)
+# ---------------------------------------------------------------------------
+EMAIL_BACKEND = env_str("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env_str("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = env_int("EMAIL_PORT", 587)
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+EMAIL_HOST_USER = env_str("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = env_str("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = env_str("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@localhost")
+
+
+# ---------------------------------------------------------------------------
+# Zarinpal payment gateway
+# ---------------------------------------------------------------------------
+ZARINPAL_MERCHANT_ID = env_str("ZARINPAL_MERCHANT_ID", "")
+# https://sandbox.zarinpal.com for testing, https://payment.zarinpal.com in production
+ZARINPAL_BASE_URL = env_str("ZARINPAL_BASE_URL", "https://sandbox.zarinpal.com").rstrip("/")
+ZARINPAL_REQUEST_URL = f"{ZARINPAL_BASE_URL}/pg/v4/payment/request.json"
+ZARINPAL_VERIFY_URL = f"{ZARINPAL_BASE_URL}/pg/v4/payment/verify.json"
+ZARINPAL_STARTPAY_URL = f"{ZARINPAL_BASE_URL}/pg/StartPay/"
+ZARINPAL_CALLBACK_URL = env_str("ZARINPAL_CALLBACK_URL", "http://127.0.0.1:8000/api/payments/verify/")
+ZARINPAL_TIMEOUT = env_int("ZARINPAL_TIMEOUT", 15)
+# Unit of the prices stored in the database: "TOMAN" or "RIAL".
+# Zarinpal expects amounts in Rial.
+PRICE_UNIT = env_str("PRICE_UNIT", "TOMAN").upper()
+
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
+    },
+    "root": {"handlers": ["console"], "level": env_str("LOG_LEVEL", "INFO")},
+}
+
+
+# ---------------------------------------------------------------------------
+# Jazzmin admin theme
+# ---------------------------------------------------------------------------
 JAZZMIN_SETTINGS = {
-    "site_title": os.getenv("ADMIN_SITE_TITLE", "Custom Shop Admin"),
-    "site_header": os.getenv("ADMIN_SITE_HEADER", "Custom Shop"),
-    "site_brand": os.getenv("ADMIN_SITE_BRAND", "Custom Shop"),
-    "welcome_sign": os.getenv("ADMIN_WELCOME_SIGN", "Welcome to Custom Shop Admin"),
+    "site_title": env_str("ADMIN_SITE_TITLE", "کاستومی شاپ | مدیریت"),
+    "site_header": env_str("ADMIN_SITE_HEADER", "داشبورد کاستومی شاپ"),
+    "site_brand": env_str("ADMIN_SITE_BRAND", "Customi Shop"),
+    "welcome_sign": env_str("ADMIN_WELCOME_SIGN", "سلام! به پنل مدیریت کاستومی شاپ خوش آمدید"),
+    "copyright": "Customi Shop",
     # Static asset paths relative to STATIC_URL
-    "site_logo": os.getenv("ADMIN_LOGO", "icons/desktop-logo.svg"),
-    "login_logo": os.getenv("ADMIN_LOGIN_LOGO", "icons/desktop-logo.svg"),
-    "site_icon": os.getenv("ADMIN_FAVICON", "icons/desktop-logo.svg"),
-
-    # Search box models
+    "site_logo": env_str("ADMIN_LOGO", "icons/desktop-logo.svg"),
+    "login_logo": env_str("ADMIN_LOGIN_LOGO", "icons/desktop-logo.svg"),
+    "site_logo_dark": env_str("ADMIN_LOGO", "icons/desktop-logo.svg"),
+    "site_icon": env_str("ADMIN_FAVICON", "icons/desktop-logo.svg"),
+    "show_ui_builder": False,
+    "navigation_expanded": True,
+    "language_chooser": False,
     "search_model": [
         "accounts.User",
         "catalog.Product",
@@ -352,198 +414,48 @@ JAZZMIN_SETTINGS = {
         "sales.Order",
         "payments.Payment",
     ],
-
-    # External site URL used by "View site"
-    "site_url": "/",
-
-    # Top menu
+    "order_with_respect_to": ["accounts", "marketplace", "catalog", "sales", "payments", "reviews", "core"],
     "topmenu_links": [
-        {"name": "Dashboard", "url": "admin:index", "permissions": ["auth.view_user"]},
-        {"name": "API Docs", "url": "/api/schema/swagger-ui/", "new_window": True},
+        {"name": "داشبورد", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "API Docs", "url": "/api/docs/", "new_window": True},
+        {"model": "sales.Order"},
         {"app": "accounts"},
-        {"app": "marketplace"},
-        {"app": "catalog"},
-        {"app": "sales"},
-        {"app": "payments"},
     ],
-
-    # Icons for apps/models (FontAwesome or Simple Icons class names)
+    "usermenu_links": [
+        {"name": "مشاهده سایت", "url": "/", "new_window": True},
+        {"name": "API Docs", "url": "/api/docs/", "new_window": True},
+    ],
     "icons": {
+        "auth": "fas fa-users-cog",
         "accounts.User": "fas fa-user",
-        "accounts.Profile": "fas fa-id-badge",
+        "accounts.Profile": "fas fa-id-card",
         "accounts.Address": "fas fa-map-marker-alt",
         "accounts.OTP": "fas fa-shield-alt",
-        "catalog.Category": "fas fa-sitemap",
-        "catalog.Product": "fas fa-box",
+        "catalog.Category": "fas fa-layer-group",
+        "catalog.Product": "fas fa-box-open",
         "catalog.ProductVariant": "fas fa-boxes-stacked",
         "marketplace.Seller": "fas fa-store",
         "marketplace.Store": "fas fa-shop",
         "marketplace.StoreItem": "fas fa-barcode",
-        "sales.Cart": "fas fa-shopping-cart",
+        "sales.Cart": "fas fa-shopping-basket",
         "sales.CartItem": "fas fa-shopping-basket",
-        "sales.Order": "fas fa-receipt",
+        "sales.Order": "fas fa-shopping-cart",
         "sales.OrderItem": "fas fa-list",
         "payments.Payment": "fas fa-credit-card",
         "payments.Transaction": "fas fa-money-check-alt",
         "reviews.ProductReview": "fas fa-star",
         "reviews.StoreReview": "fas fa-star-half-alt",
     },
-
-    # App ordering in sidebar
-    "order_with_respect_to": [
-        "accounts", "marketplace", "catalog", "sales", "payments", "reviews", "core"
-    ],
-
-    # UI behavior
-    "show_sidebar": True,
-    "navigation_expanded": True,
-    "hide_apps": [],
-    "hide_models": [],
     "changeform_format": "collapsible",
     "changeform_format_oversized": "horizontal_tabs",
-
-    # Extra links in user menu
-    "usermenu_links": [
-        {"name": "API Docs", "url": "/api/schema/swagger-ui/", "new_window": True},
-    ],
-}
-
-JAZZMIN_UI_TWEAKS = {
-    "theme": os.getenv("ADMIN_THEME", "flatly"),           # light theme
-    "dark_mode_theme": os.getenv("ADMIN_DARK_THEME", "darkly"),
-    "toggle_sidebar_button": True,
-    "navbar": "navbar-dark navbar-success",                # green topbar
-    "brand": "navbar-brand",
-    "footer_fixed": False,
-    "body_small_text": False,
-    "brand_colour": "navbar-success",                      # brand matches navbar
-    "accent": "accent-teal",                               # teal accents
-    "sidebar": "sidebar-dark-success",                    # green sidebar
-    "sidebar_nav_small_text": False,
-    "sidebar_disable_expand": False,
-    "sidebar_nav_child_indent": True,
-    "button_classes": {                                     # remap primary to success for consistency
-        "primary": "btn-success",
-        "secondary": "btn-secondary",
-        "info": "btn-info",
-        "warning": "btn-warning",
-        "danger": "btn-danger",
-        "success": "btn-success",
-    },
-
-}
-
-# Celery beat schedule (optional; requires running a beat process)
-try:
-    from celery.schedules import crontab  # type: ignore
-
-    CELERY_BEAT_SCHEDULE = {
-        "prune-expired-otps-hourly": {
-            "task": "accounts.tasks.prune_expired_otps_task",
-            "schedule": crontab(minute=0),  # hourly at minute 0
-        },
-    }
-except Exception:
-    # Celery may not be installed during some CI steps; ignore
-    pass
-EMAIL_USE_TLS = True
-
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
-CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
-
-# CELERY_BEAT_SCHEDULE = {
-#     "update_order_status": {
-#         "task": "orders.tasks.update_order_status",
-#         "schedule": crontab(minute="*/1"),
-#     },
-# }
-
-# CACHES = {
-#     "default": {
-#         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-#     }
-# }
-
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-
-ZP_MERCHANT = os.getenv("ZP_MERCHANT", "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
-ZP_BASE = os.getenv("ZP_BASE", "https://sandbox.zarinpal.com")
-PRICE_UNIT = os.getenv("PRICE_UNIT", "TOMAN")
-BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:8000")
-CALLBACK_URL = "http://127.0.0.1:8000/api/payments/verify/"
-
-ZP_REQUEST = f"{ZP_BASE}/pg/v4/payment/request.json"
-ZP_VERIFY = f"{ZP_BASE}/pg/v4/payment/verify.json"
-ZP_STARTPAY = f"{ZP_BASE}/pg/StartPay/"
-
-# --- Zarinpal ---
-# ZP_MODE = os.getenv("ZP_MODE", "sandbox").lower()
-# if ZP_MODE == "production":
-#     ZP_BASE = "https://api.zarinpal.com"
-# else:
-#     ZP_BASE = "https://sandbox.zarinpal.com"
-
-# ZP_MERCHANT = os.getenv("ZP_MERCHANT", "")
-# ZP_REQUEST  = f"{ZP_BASE}/pg/v4/payment/request.json"
-# ZP_VERIFY   = f"{ZP_BASE}/pg/v4/payment/verify.json"
-# ZP_STARTPAY = f"{ZP_BASE}/pg/StartPay/"
-
-# BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:8000")
-# PRICE_UNIT = os.getenv("PRICE_UNIT", "toman")  # toman|rial
-
-
-# SANDBOX = True 
-# MERCHANT_ID = 'a0000000-0000-0000-0000-000000000000'
-# KAVENEGAR_API_KEY = '316E6E44372F773869374333634231505146654A75527A72444E55384E5245696D5A556A534E64657A68733D'
-
-# بدون نیاز به worker
-# CELERY_TASK_ALWAYS_EAGER = True
-# CELERY_TASK_EAGER_PROPAGATES = True
-
-
-JAZZMIN_SETTINGS = {
-    "site_title": "کاستومی شاپ | مدیریت",
-    "site_header": "داشبورد کاستومی شاپ",
-    "site_brand": "Customi Shop",
-    "site_logo": "icons/desktop-logo.svg",
-    # Ensure login and dark-mode logos are shown as well
-    "login_logo": "icons/desktop-logo.svg",
-    "site_logo_dark": "icons/desktop-logo.svg",
-    "welcome_sign": "سلام! به پنل مدیریت کاستومی شاپ خوش آمدید",
-    "copyright": "© 2025 Customi Shop",
-    "show_ui_builder": False,
-    "navigation_sidebar": True,
-    "search_model": ["accounts.User", "catalog.Product", "sales.Order"],
-    "order_with_respect_to": ["accounts", "marketplace", "catalog", "sales", "payments"],
-    "topmenu_links": [
-        {"name": "داشبورد", "url": "admin:index", "permissions": ["auth.view_user"]},
-        {"model": "sales.Order"},
-        {"app": "accounts"},
-    ],
-    "usermenu_links": [
-        {"name": "مشاهده سایت", "url": "/", "new_window": True},
-    ],
-    "icons": {
-        "auth": "fas fa-users-cog",
-        "accounts.User": "fas fa-user",
-        "accounts.Profile": "fas fa-id-card",
-        "catalog.Product": "fas fa-box-open",
-        "catalog.Category": "fas fa-layer-group",
-        "marketplace.Store": "fas fa-store",
-        "sales.Order": "fas fa-shopping-cart",
-        "payments.Payment": "fas fa-credit-card",
-    },
-    "language_chooser": False,
-    # Load extra styles from our static dir (fonts/branding)
-    # Jazzmin expects a string path here; using list causes it to be URL-encoded
+    # Jazzmin expects a string path here; a list would be URL-encoded.
     "custom_css": "css/admin.css",
-    "custom_js": ["js/admin.js"],
+    "custom_js": "js/admin.js",
 }
 
 JAZZMIN_UI_TWEAKS = {
-    # Use a valid Bootswatch theme shipped with Jazzmin
-    "theme": "flatly",
-    "dark_mode_theme": "darkly",
+    "theme": env_str("ADMIN_THEME", "flatly"),
+    "dark_mode_theme": env_str("ADMIN_DARK_THEME", "darkly"),
     "navbar": "navbar-white navbar-light",
     "navbar_fixed": True,
     "navbar_small_text": False,

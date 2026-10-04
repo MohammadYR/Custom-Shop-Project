@@ -18,7 +18,7 @@ def test_register_and_login_and_me():
     c = APIClient()
 
     # Register
-    r = c.post(reverse("register"), {
+    r = c.post(reverse("accounts:register"), {
         "username": "ali",
         "email": "Ali@Example.com",
         "phone_number": "09120000000",
@@ -27,44 +27,36 @@ def test_register_and_login_and_me():
     assert r.status_code in (200, 201)
 
     # Login (by email, case-insensitive)
-    r = c.post(reverse("login"), {"identifier": "ali@example.com", "password": "StrongPass123!"}, format="json")
+    r = c.post(reverse("accounts:login"), {"identifier": "ali@example.com", "password": "StrongPass123!"}, format="json")
     assert r.status_code == 200
     access = r.data["access"]
     c.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
 
     # Me
-    r = c.get(reverse("me"))
+    r = c.get(reverse("accounts:me"))
     assert r.status_code == 200
     assert r.data["email"] == "ali@example.com"
 
 @pytest.mark.django_db
 def test_address_crud_and_default():
     """
-    Test CRUD operations for address model, including setting an address as default.
-    
-    This test creates a user, and then creates two addresses for the user. The first address is created as the default address.
-    The second address is attempted to be created as the default address, which should fail due to the address model's
-    validation rules. The test then creates the second address without setting it as the default address, and then sets it as the default
-    address using the set_default action.
-
-    The test asserts that the create operations return a 200 or 201 status code, and that the set_default action returns a 200
-    status code. The test also asserts that the second create operation returns a 400 status code with the appropriate error
-    message, and that the set_default action sets the appropriate address as the default address.
+    Creating a second default address is allowed: the previous default is
+    un-set automatically (accounts.signals.ensure_single_default_address).
+    The set_default action switches the default back.
     """
     user = User.objects.create_user(username="u", email="u@x.com", password="pass12345")
     c = APIClient(); c.force_authenticate(user)
 
-    # create first default address
-    r = c.post("/api/accounts/addresses/", {
+    r1 = c.post("/api/accounts/addresses/", {
         "line1": "Tehran, 1",
         "city": "Tehran",
         "postal_code": "11111",
         "is_default": True,
         "purpose": "shipping"
     }, format="json")
-    assert r.status_code in (200, 201)
+    assert r1.status_code == 201
+    first_id = r1.data["id"]
 
-    # create second as default should fail
     r2 = c.post("/api/accounts/addresses/", {
         "line1": "Tehran, 2",
         "city": "Tehran",
@@ -72,20 +64,19 @@ def test_address_crud_and_default():
         "is_default": True,
         "purpose": "shipping"
     }, format="json")
-    assert r2.status_code == 400
-    assert "is_default" in r2.data
+    assert r2.status_code == 201
+    assert Address.objects.get(pk=r2.data["id"]).is_default is True
+    assert Address.objects.get(pk=first_id).is_default is False
 
-    # set_default action on second after create (non-default)
-    r3 = c.post("/api/accounts/addresses/", {
-        "line1": "Tehran, 2",
-        "city": "Tehran",
-        "postal_code": "22222",
-        "is_default": False,
-        "purpose": "shipping"
-    }, format="json")
-    addr2_id = r3.data["id"]
-    r4 = c.post(f"/api/accounts/addresses/{addr2_id}/set_default/")
-    assert r4.status_code == 200
+    r3 = c.post(f"/api/accounts/addresses/{first_id}/set_default/")
+    assert r3.status_code == 200
+    assert Address.objects.get(pk=first_id).is_default is True
+    assert Address.objects.get(pk=r2.data["id"]).is_default is False
+
+    r4 = c.delete(f"/api/accounts/addresses/{first_id}/")
+    assert r4.status_code == 204
+    assert not Address.objects.filter(pk=first_id).exists()
+
 
 @pytest.mark.django_db
 def test_otp_flow():
@@ -100,7 +91,7 @@ def test_otp_flow():
     c = APIClient()
     
     
-    r1 = c.post(reverse("otp_request"), {
+    r1 = c.post(reverse("accounts:otp_request"), {
         "target": "test@example.com",
         "purpose": "login"
     })
@@ -110,7 +101,7 @@ def test_otp_flow():
     code = otp.code
     
 
-    r2 = c.post(reverse("otp_verify"), {
+    r2 = c.post(reverse("accounts:otp_verify"), {
         "target": "test@example.com", 
         "code": code,
         "purpose": "login"
@@ -121,7 +112,13 @@ def test_otp_flow():
 
 @pytest.mark.django_db
 def test_unique_default_address_db_constraint():
-    u = User.objects.create_user(username="a", password="p")
-    Address.objects.create(user=u, line1="X", is_default=True)
+    """The partial unique constraint is the last line of defence.
+
+    The pre_save signal un-sets the previous default on save(), so bypass it
+    with a queryset update() to hit the database constraint directly.
+    """
+    u = User.objects.create_user(username="a", email="a@example.com", password="p")
+    Address.objects.create(user=u, line1="X", city="T", postal_code="1", is_default=True)
+    second = Address.objects.create(user=u, line1="Y", city="T", postal_code="2", is_default=False)
     with pytest.raises(IntegrityError):
-        Address.objects.create(user=u, line1="Y", is_default=True)
+        Address.objects.filter(pk=second.pk).update(is_default=True)
