@@ -237,5 +237,3 @@ __marimo__/
 # */migrations/
 
 temp_file.txt
-static/icons/*.tsx
-static/icons/
