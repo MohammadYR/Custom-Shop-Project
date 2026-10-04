@@ -15,6 +15,7 @@ from marketplace.seller_views import (
     MyStoreView,
 )
 from marketplace.views import PublicStoreViewSet
+from sales.views import AddToCartView, AdminOrderViewSet, CartItemViewSet, CheckoutView, MyCartView, OrderViewSet
 
 router = DefaultRouter(trailing_slash=True)
 router.include_root_view = False
@@ -29,6 +30,11 @@ router.register(r"admin/categories", AdminCategoryViewSet, basename="admin-categ
 router.register(r"products", PublicProductViewSet, basename="product")
 router.register(r"stores", PublicStoreViewSet, basename="store")
 
+# Cart and orders
+router.register(r"mycart/items", CartItemViewSet, basename="mycart-item")
+router.register(r"myorders", OrderViewSet, basename="myorder")
+router.register(r"orders", AdminOrderViewSet, basename="order")
+
 # Seller area
 router.register(r"mystore/addresses", MyStoreAddressViewSet, basename="mystore-address")
 router.register(r"mystore/items", MyStoreItemViewSet, basename="mystore-item")
@@ -38,6 +44,9 @@ router.register(r"mystore/order-items", MyStoreOrderItemViewSet, basename="mysto
 urlpatterns = [
     path("myuser/", MyUserView.as_view(), name="myuser"),
     path("mystore/", MyStoreView.as_view(), name="mystore"),
+    path("mycart/", MyCartView.as_view(), name="mycart"),
+    path("mycart/add_to_cart/<uuid:store_item_id>/", AddToCartView.as_view(), name="mycart-add-to-cart"),
+    path("orders/checkout/", CheckoutView.as_view(), name="orders-checkout"),
     path("myuser/register_as_seller/", RegisterAsSellerView.as_view(), name="myuser-register-as-seller"),
     path("", include(router.urls)),
 ]
