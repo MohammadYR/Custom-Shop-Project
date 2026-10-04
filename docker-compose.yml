@@ -1,50 +1,69 @@
-# docker compose up --build
-# Reads .env (copy .env.example). Values below override the ones that must point
-# at the other containers (database host, Redis URL).
-x-app-env: &app-env
-  DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings.prod}
-  DB_ENGINE: django.db.backends.postgresql
-  DB_HOST: db
-  DB_PORT: "5432"
-  DB_NAME: ${DB_NAME:-shopdb}
-  DB_USER: ${DB_USER:-shopuser}
-  DB_PASSWORD: ${DB_PASSWORD:-shoppass}
-  REDIS_URL: redis://redis:6379/0
-  CELERY_BROKER_URL: redis://redis:6379/0
-  CELERY_RESULT_BACKEND: redis://redis:6379/0
-  # Local docker runs over plain http; set to True behind an HTTPS proxy.
-  SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-False}
-  SERVE_MEDIA: ${SERVE_MEDIA:-True}
+# Full stack:            docker compose up -d --build
+# Only DB + Redis (dev):  docker compose up -d db redis   (then run Django locally)
+#
+# Reads .env (copy .env.example). The values below override the ones that must
+# point at the other containers (database host, Redis URL).
+x-app: &app
+  build: .
+  env_file:
+    - .env
+  environment:
+    DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE_DOCKER:-config.settings.prod}
+    DB_ENGINE: django.db.backends.postgresql
+    DB_HOST: db
+    DB_PORT: "5432"
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CELERY_RESULT_BACKEND: redis://redis:6379/0
+    # Local docker runs over plain http. Behind an HTTPS proxy set
+    # DOCKER_SECURE_SSL_REDIRECT=True (separate name so the SECURE_SSL_REDIRECT
+    # value in .env, meant for real deployments, does not leak in here).
+    SECURE_SSL_REDIRECT: ${DOCKER_SECURE_SSL_REDIRECT:-False}
+    SERVE_MEDIA: ${DOCKER_SERVE_MEDIA:-True}
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
 
 services:
   db:
-    image: postgres:15
+    image: postgres:18
     environment:
       POSTGRES_DB: ${DB_NAME:-shopdb}
       POSTGRES_USER: ${DB_USER:-shopuser}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-shoppass}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    ports:
+      # Exposed on localhost so Django can run outside Docker during development.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # PostgreSQL 18 images keep data under /var/lib/postgresql/<version>/.
+      - pgdata:/var/lib/postgresql
 
   redis:
-    image: redis:7
+    image: redis:8
+    ports:
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
 
+  migrate:
+    <<: *app
+    command: python manage.py migrate --noinput
+    healthcheck:
+      disable: true
+    restart: "no"
+
   web:
-    build: .
-    env_file:
-      - .env
-    environment:
-      <<: *app-env
+    <<: *app
     ports:
       - "8000:8000"
     volumes:
@@ -55,13 +74,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   worker:
-    build: .
-    env_file:
-      - .env
-    environment:
-      <<: *app-env
+    <<: *app
     command: celery -A config worker -l info
     healthcheck:
       disable: true
@@ -72,21 +89,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   beat:
-    build: .
-    env_file:
-      - .env
-    environment:
-      <<: *app-env
+    <<: *app
     command: celery -A config beat -l info --schedule /tmp/celerybeat-schedule
     healthcheck:
       disable: true
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:

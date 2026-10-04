@@ -21,3 +21,6 @@ staticfiles/
 config/media/
 .vscode
 .idea
+frontend/
+frontend.zip
+/*.pdf
