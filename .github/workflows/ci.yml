@@ -2,71 +2,99 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - name: Ruff (lint)
+        run: uvx ruff check --output-format=github .
+      - name: Ruff (format)
+        run: uvx ruff format --check .
+
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: shopdb
+          POSTGRES_USER: shopuser
+          POSTGRES_PASSWORD: shoppass
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U shopuser -d shopdb"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DJANGO_SETTINGS_MODULE: config.settings.test
+      DB_HOST: localhost
+      DB_NAME: shopdb
+      DB_USER: shopuser
+      DB_PASSWORD: shoppass
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements/*.txt
+          enable-cache: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements/dev.txt
+      - name: Install Python and dependencies
+        run: uv sync --locked
 
       - name: Django system checks
-        run: python manage.py check
+        run: uv run python manage.py check
 
       - name: Check for missing migrations
-        run: python manage.py makemigrations --check --dry-run
+        run: uv run python manage.py makemigrations --check --dry-run
 
       - name: Validate OpenAPI schema
-        run: python manage.py spectacular --fail-on-warn --validate --file /tmp/schema.yaml
+        run: uv run python manage.py spectacular --fail-on-warn --validate --file /tmp/schema.yaml
 
       - name: Run tests with coverage
-        run: pytest --cov --cov-report=term-missing --cov-report=xml
+        run: uv run pytest --cov --cov-report=term-missing --cov-report=xml
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-xml
           path: coverage.xml
 
   docker:
     # Builds the image and checks that the compose stack (prod settings,
-    # gunicorn, Postgres, Redis) becomes healthy.
+    # gunicorn, PostgreSQL, Redis, Celery) becomes healthy.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Create .env for the smoke test
         run: |
           cp .env.example .env
           sed -i "s|^DJANGO_SECRET_KEY=.*|DJANGO_SECRET_KEY=ci-$(openssl rand -hex 32)|" .env
-          sed -i "s|^DJANGO_SETTINGS_MODULE=.*|DJANGO_SETTINGS_MODULE=config.settings.prod|" .env
+          sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=ci-$(openssl rand -hex 16)|" .env
 
       - name: Start the stack and wait for healthchecks
-        run: docker compose up -d --build --wait --wait-timeout 240 web
+        run: docker compose up -d --build --wait --wait-timeout 300 web worker
 
       - name: Smoke test
+        # Every URL must answer 200 directly (a redirect counts as a failure).
         run: |
-          curl -fsS http://localhost:8000/health/
-          curl -fsS http://localhost:8000/api/products/ > /dev/null
-          curl -fsS http://localhost:8000/api/schema/ > /dev/null
+          for path in /health/ /api/products/ /api/categories/ /api/schema/; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8000$path")
+            echo "$path -> $code"
+            test "$code" = 200
+          done
 
       - name: Show logs on failure
         if: failure()

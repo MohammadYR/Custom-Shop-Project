@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from smtplib import SMTPException
+
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import EmailMessage
 
 
-@shared_task
+@shared_task(autoretry_for=(SMTPException, OSError), retry_backoff=True, max_retries=3)
 def notify_low_stock_email_task(store_item_id: str, sku: str, stock: int, threshold: int):
     """
     Notify store owner by email when a StoreItem stock falls below threshold.
@@ -14,7 +16,9 @@ def notify_low_stock_email_task(store_item_id: str, sku: str, stock: int, thresh
     from .models import StoreItem
 
     try:
-        item = StoreItem.objects.select_related("store", "store__owner", "store__owner__user", "variant").get(pk=store_item_id)
+        item = StoreItem.objects.select_related("store", "store__owner", "store__owner__user", "variant").get(
+            pk=store_item_id
+        )
     except StoreItem.DoesNotExist:
         return
 
@@ -32,9 +36,4 @@ def notify_low_stock_email_task(store_item_id: str, sku: str, stock: int, thresh
         f"Store: {item.store.name}"
     )
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
-    try:
-        EmailMessage(subject, body, from_email, [to_email]).send()
-    except Exception:
-        # In dev, email backend may be console or misconfigured; ignore failures
-        pass
-
+    EmailMessage(subject, body, from_email, [to_email]).send()

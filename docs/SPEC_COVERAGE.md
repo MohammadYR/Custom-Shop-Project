@@ -1,5 +1,7 @@
 # Spec coverage (Maktab130 final project)
 
+> Snapshot of the course requirements as delivered in v1.1.0 (PR #14). Later changes are in the [changelog](../CHANGELOG.md).
+
 ## خلاصه فارسی
 این جدول هر نیازمندی سند پروژه نهایی مکتب ۱۳۰ را به endpoint، مدل و تست مربوطه نگاشت می‌کند. همه نیازمندی‌های اجباری پیاده‌سازی شده‌اند. موارد «جزئی» یا تصمیم‌های طراحی در ستون توضیحات آمده‌اند (مثلاً تخفیف به‌صورت درصدی روی StoreItem است و کوپن پیاده‌سازی نشده؛ حذف حساب کاربری آن را غیرفعال می‌کند).
 
@@ -7,21 +9,21 @@ Status: ✅ done · ⚠️ done with a documented limitation · ❌ not done
 
 ## Delivery and technical notes
 | Requirement | Where | Status |
-|---|---|---|
+| --- | --- | --- |
 | Complete README (install, run, env vars, tests) | `README.md` | ✅ |
 | ERD | `docs/ERD.png` (generated from models), `docs/ERD_v1.pdf` (original) | ✅ |
-| Repository private until the end | GitHub settings | ❌ owner action: the repo is public |
-| Instructors added as collaborators | GitHub settings | ❌ owner action |
+| Repository private until the end | GitHub settings | ✅ private during the course; public now as a portfolio project |
+| Instructors added as collaborators | GitHub settings | ✅ during the course |
 | Small commits, clear messages, branches + pull requests | branches `fix/security-and-logic`, `feat/spec-alignment`, PRs #13 and #14 | ✅ |
 | `core` app and logical delete (HackSoft BaseModel) | `core/models.py` (`BaseModel`, `SoftDeleteQuerySet`); soft-delete aware unique constraints | ✅ `core/tests.py`, `tests/core/test_soft_delete_product.py` |
-| Deploy with docker and docker compose | `Dockerfile` (gunicorn, healthcheck), `docker-compose.yml` (db, redis, web, worker, beat) | ✅ CI job `docker` |
+| Deploy with docker and docker compose | `Dockerfile` (gunicorn, healthcheck), `docker-compose.yml` (db, redis, migrate, web, worker, beat) | ✅ CI job `docker` |
 | Settings split cleanly with `.env` | `config/settings/{base,dev,test,prod}.py`, `config/env.py`, `.env.example` | ✅ `tests/test_health_and_settings.py` |
 | Up-to-date docs with request/response | drf-spectacular `/api/docs/`, `/api/redoc/`, `schema.yaml`; CI validates with `--fail-on-warn` | ✅ |
 | Redis and Celery where needed | OTP delivery, order emails, seller notifications, low-stock alerts, transaction log, OTP cleanup (beat); Redis cache for throttling in prod | ✅ `tests/test_signals_wired.py`, `tests/test_order_state_machine.py` |
 
 ## Accounts (tests required)
 | Requirement | Endpoint / model | Tests | Status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Register and log in with email / phone | `POST /api/accounts/register/`, `POST /api/accounts/login/` (`identifier` = email, username or phone) | `tests/test_spec_accounts.py::test_register_login_refresh_flow`, `accounts/tests.py` | ✅ |
 | JWT login | SimpleJWT, `POST /api/accounts/token/refresh/` | same | ✅ |
 | Login / verification via OTP | `POST /api/accounts/request-otp/`, `POST /api/accounts/verify-otp/` (email or Kavenegar SMS, 5 attempts, throttled) | `test_otp_request_verify_spec_paths_with_frontend_field_names`, `tests/test_accounts_regressions.py`, `tests/test_sms.py` | ✅ |
@@ -32,7 +34,7 @@ Status: ✅ done · ⚠️ done with a documented limitation · ❌ not done
 
 ## Sellers and stores (tests required)
 | Requirement | Endpoint / model | Tests | Status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Any user can request to become a seller | `POST /api/myuser/register_as_seller/` (`marketplace.services.register_as_seller`, atomic) | `test_register_as_seller_spec_path`, `test_register_as_seller_*` | ✅ |
 | A seller has one store with details and address | `Store` (+ `phone_number`, `email`, `website`), `StoreAddress`; `GET/POST/PATCH /api/mystore/`, `/api/mystore/addresses/` | `tests/test_spec_mystore.py`, `tests/test_store_profile.py` | ✅ one store per seller enforced in the API |
 | Seller manages store items | `/api/mystore/items/` | `test_items_crud_store_is_automatic`, `test_items_of_other_sellers_are_invisible` | ✅ |
@@ -41,7 +43,7 @@ Status: ✅ done · ⚠️ done with a documented limitation · ❌ not done
 
 ## Products and categories
 | Requirement | Endpoint / model | Tests | Status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Products belong to categories | `catalog.Product.category` | `tests/test_catalog_api.py` | ✅ |
 | Name, description, category, images, stock, price | `Product` (`title`/`name`, `description`, `price`), `ProductImage` (many), `stock` and `best_price` computed from store items | `tests/test_catalog_search_filter.py` | ✅ |
 | A product can be sold by many stores | `StoreItem` (store × variant, own price/stock/discount) | `test_stock_best_price_and_rating` | ✅ |
@@ -51,7 +53,7 @@ Status: ✅ done · ⚠️ done with a documented limitation · ❌ not done
 
 ## Cart and orders
 | Requirement | Endpoint / model | Tests | Status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Add to cart via StoreItem | `POST /api/mycart/add_to_cart/{store_item_id}/`, `/api/mycart/items/` | `test_full_buyer_flow`, `test_add_to_cart_unknown_or_out_of_stock` | ✅ |
 | Cart total and discount | `StoreItem.discount_percent`; cart `total_original_price`, `total_discount`, `total_price` | `tests/test_discounts.py` | ⚠️ percentage discount per store item; no coupons |
 | Checkout | `POST /api/orders/checkout/` (`sales.services.create_order_from_cart`: row locks, no overselling) | `tests/test_checkout_regressions.py` | ✅ |
@@ -59,20 +61,20 @@ Status: ✅ done · ⚠️ done with a documented limitation · ❌ not done
 
 ## Payments
 | Requirement | Endpoint / model | Tests | Status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | A payment record for each order | `payments.Payment` created at checkout; `GET /api/payments/` | `test_checkout_snapshots_prices_creates_payment_and_decrements_stock`, `test_payments_list_is_scoped` | ✅ |
 | Order status changes after payment verification | `POST /api/payments/{order_id}/start/`, `GET /api/payments/verify/` → `mark_order_paid` (idempotent) | `tests/test_payments_api.py`, `payments/tests.py` | ✅ (Zarinpal mocked in tests; sandbox needs a merchant id) |
 
 ## Admin API
 | Requirement | Endpoint | Tests | Status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Manage users (list, edit, delete) | `/api/admin/users/` | `test_admin_can_list_edit_delete_users`, `test_admin_cannot_delete_user_with_orders` | ✅ users with orders return 409 (deactivate instead) |
 | Manage categories | `/api/admin/categories/` | `test_admin_categories_crud` | ✅ |
 | Manage orders and payments | `/api/orders/` (+ `mark_paid`, `cancel`), `/api/payments/` | `test_staff_orders_management`, `test_payments_list_is_scoped` | ✅ |
 
 ## Django admin panel
 | Requirement | Where | Status |
-|---|---|---|
+| --- | --- | --- |
 | Custom title instead of "Django administration" | `JAZZMIN_SETTINGS` (`site_title`, `site_header`, `site_brand`) | ✅ |
 | Logo and colours | Jazzmin theme + `static/css/admin.css`; logo path from `ADMIN_LOGO` | ⚠️ logo files live in git-ignored `static/icons/` |
 | Header / footer text | `welcome_sign`, `copyright` | ✅ |

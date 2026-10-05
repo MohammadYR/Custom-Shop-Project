@@ -15,9 +15,7 @@ class _BaseReviewSerializer(serializers.ModelSerializer):
         target = attrs.get(self.target_field)
         if self.instance is not None:
             if target is not None and target != getattr(self.instance, self.target_field):
-                raise serializers.ValidationError(
-                    {self.target_field: "The reviewed object cannot be changed."}
-                )
+                raise serializers.ValidationError({self.target_field: "The reviewed object cannot be changed."})
             return attrs
 
         user = self.context["request"].user

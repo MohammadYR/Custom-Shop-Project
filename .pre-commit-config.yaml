@@ -1,0 +1,32 @@
+# Install once with: uv run pre-commit install
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: django-missing-migrations
+        name: Check for missing migrations
+        entry: uv run python manage.py makemigrations --check --dry-run
+        language: system
+        pass_filenames: false
+        files: \.py$
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          DB_ENGINE: django.db.backends.sqlite3

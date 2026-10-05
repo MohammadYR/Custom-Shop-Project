@@ -10,7 +10,13 @@ from reviews.serializers import ProductReviewSerializer
 from .filters import ProductFilter
 from .models import Category, ProductImage, ProductVariant
 from .selectors import product_list_queryset
-from .serializers import CategorySerializer, ProductImageSerializer, ProductSerializer, ProductVariantSerializer
+from .serializers import (
+    CategorySerializer,
+    ProductDetailSerializer,
+    ProductImageSerializer,
+    ProductSerializer,
+    ProductVariantSerializer,
+)
 
 
 @extend_schema(tags=["Catalog"])
@@ -42,6 +48,11 @@ class ProductViewSet(ModelViewSet):
     def get_queryset(self):
         return product_list_queryset()
 
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return ProductDetailSerializer
+        return super().get_serializer_class()
+
 
 @extend_schema(tags=["Catalog"])
 class ProductImageViewSet(ModelViewSet):
@@ -67,6 +78,7 @@ class ProductVariantViewSet(ModelViewSet):
 # ---------------------------------------------------------------------------
 # Spec paths: /api/categories/, /api/admin/categories/, /api/products/
 # ---------------------------------------------------------------------------
+
 
 @extend_schema(tags=["Catalog"])
 class PublicCategoryViewSet(ReadOnlyModelViewSet):
@@ -106,3 +118,8 @@ class PublicProductViewSet(ReviewActionsMixin, ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return product_list_queryset().filter(is_active=True)
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return ProductDetailSerializer
+        return super().get_serializer_class()

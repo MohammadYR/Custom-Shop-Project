@@ -1,4 +1,5 @@
 """Accounts endpoints at the paths listed in the course spec."""
+
 import pytest
 from rest_framework.test import APIClient
 
@@ -41,8 +42,9 @@ def test_myuser_view_and_edit(auth_client, user):
     res = auth_client.get("/api/myuser/")
     assert res.status_code == 200
     assert res.data["username"] == user.username
-    res = auth_client.patch("/api/myuser/", {"full_name": "Sara Ahmadi", "first_name": "Sara", "is_seller": True},
-                            format="json")
+    res = auth_client.patch(
+        "/api/myuser/", {"full_name": "Sara Ahmadi", "first_name": "Sara", "is_seller": True}, format="json"
+    )
     assert res.status_code == 200
     user.refresh_from_db()
     assert user.profile.full_name == "Sara Ahmadi"
@@ -68,8 +70,9 @@ def test_myuser_delete_deactivates(auth_client, user):
 
 def test_myuser_address_crud(auth_client, user):
     url = "/api/myuser/address/"
-    res = auth_client.post(url, {"line1": "Azadi", "city": "Tabriz", "postal_code": "5", "is_default": True},
-                           format="json")
+    res = auth_client.post(
+        url, {"line1": "Azadi", "city": "Tabriz", "postal_code": "5", "is_default": True}, format="json"
+    )
     assert res.status_code == 201
     aid = res.data["id"]
     assert auth_client.patch(f"{url}{aid}/", {"city": "Karaj"}, format="json").data["city"] == "Karaj"
@@ -89,6 +92,7 @@ def test_register_as_seller_spec_path(auth_client, user):
 
 
 # --- admin users -------------------------------------------------------------
+
 
 def test_admin_users_requires_staff(auth_client):
     assert auth_client.get("/api/admin/users/").status_code == 403

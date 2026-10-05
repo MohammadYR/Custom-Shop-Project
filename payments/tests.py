@@ -1,6 +1,6 @@
 import pytest
-from django.urls import reverse
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 from rest_framework.test import APIClient
 
 from sales.models import Order
@@ -8,6 +8,7 @@ from sales.models import Order
 
 class DummyResponse:
     """A minimal dummy response object to mock requests.post."""
+
     def __init__(self, status_code=200, json_data=None):
         self.status_code = status_code
         self._json = json_data or {}
@@ -34,6 +35,7 @@ def test_verify_success_marks_order_paid(monkeypatch):
         return DummyResponse(200, {"data": {"code": 100, "ref_id": 987654}})
 
     import payments.gateway as gateway
+
     monkeypatch.setattr(gateway.requests, "post", fake_post)
 
     c = APIClient()

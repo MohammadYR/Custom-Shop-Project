@@ -2,28 +2,27 @@ openapi: 3.0.3
 info:
   title: Custom Shop Backend
   version: 1.0.0
-  description: "\nراهنمای استفاده از API — Custom Shop (کاستومی)\n\n1) احراز هویت\n\
-    - POST /api/accounts/register/ → ثبت‌نام\n- POST /api/accounts/login/ {\"identifier\"\
-    : \"<email|username|phone>\", \"password\": \"...\"} → access / refresh\n- POST\
-    \ /api/accounts/token/refresh/ {\"refresh\": \"...\"}\n- POST /api/accounts/request-otp/\
-    \ {\"target\": \"<email|phone>\", \"purpose\": \"login\"}\n- POST /api/accounts/verify-otp/\
-    \ {\"target\": \"...\", \"code\": \"123456\", \"purpose\": \"login\"} → JWT\n\
-    - در Swagger روی Authorize بزنید و مقدار «Bearer <access>» را وارد کنید.\n\n2)\
-    \ کاربر\n- /api/myuser/ مشاهده، ویرایش و غیرفعال‌سازی حساب + سفارش‌های اخیر\n\
-    - /api/myuser/address/ مدیریت آدرس‌ها\n- /api/myuser/register_as_seller/ تبدیل\
-    \ به فروشنده و ساخت فروشگاه\n\n3) فروشگاه و کالا\n- /api/categories/ ، /api/products/\
-    \ (search, filter, ordering, pagination) ، /api/stores/\n- /api/products/{id}/review_create/\
-    \ و /api/stores/{id}/review_create/\n- /api/mystore/ (فروشنده): فروشگاه، آدرس‌ها،\
-    \ کالاها، سفارش‌ها و تغییر وضعیت آیتم سفارش\n\n4) خرید\n- /api/mycart/ ، /api/mycart/add_to_cart/{store_item_id}/\
-    \ ، /api/mycart/items/\n- POST /api/orders/checkout/ {\"address\": \"<id>\"} →\
-    \ سفارش + payment_url\n- /api/myorders/ تاریخچه سفارش‌ها و لغو سفارش در وضعیت\
-    \ PENDING\n- POST /api/payments/{order_id}/start/ → startpay_url زرین‌پال\n- GET\
-    \ /api/payments/verify/?Authority=...&Status=OK → تایید پرداخت (ایدمپوتنت)\n\n\
-    5) مدیریت (staff)\n- /api/admin/users/ ، /api/admin/categories/ ، /api/orders/\
-    \ ، /api/payments/\n\nوضعیت سفارش: PENDING → PAID یا PENDING → CANCELLED (لغو،\
-    \ موجودی را فقط یک‌بار برمی‌گرداند).\nوضعیت آیتم سفارش: PENDING → SHIPPED → DELIVERED\
-    \ یا PENDING → CANCELLED.\nهمه لیست‌ها صفحه‌بندی دارند: ?page=2&page_size=50\n\
-    \    "
+  description: "\nراهنمای استفاده از API — Custom Shop (کاستومی)\n\n1) احراز هویت\n-
+    POST /api/accounts/register/ → ثبت‌نام\n- POST /api/accounts/login/ {\"identifier\":
+    \"<email|username|phone>\", \"password\": \"...\"} → access / refresh\n- POST
+    /api/accounts/token/refresh/ {\"refresh\": \"...\"}\n- POST /api/accounts/request-otp/
+    {\"target\": \"<email|phone>\", \"purpose\": \"login\"}\n- POST /api/accounts/verify-otp/
+    {\"target\": \"...\", \"code\": \"123456\", \"purpose\": \"login\"} → JWT\n- در
+    Swagger روی Authorize بزنید و مقدار «Bearer <access>» را وارد کنید.\n\n2) کاربر\n-
+    /api/myuser/ مشاهده، ویرایش و غیرفعال‌سازی حساب + سفارش‌های اخیر\n- /api/myuser/address/
+    مدیریت آدرس‌ها\n- /api/myuser/register_as_seller/ تبدیل به فروشنده و ساخت فروشگاه\n\n3)
+    فروشگاه و کالا\n- /api/categories/ ، /api/products/ (search, filter, ordering,
+    pagination) ، /api/stores/\n- /api/products/{id}/review_create/ و /api/stores/{id}/review_create/\n-
+    /api/mystore/ (فروشنده): فروشگاه، آدرس‌ها، کالاها، سفارش‌ها و تغییر وضعیت آیتم
+    سفارش\n\n4) خرید\n- /api/mycart/ ، /api/mycart/add_to_cart/{store_item_id}/ ،
+    /api/mycart/items/\n- POST /api/orders/checkout/ {\"address\": \"<id>\"} → سفارش
+    + payment_url\n- /api/myorders/ تاریخچه سفارش‌ها و لغو سفارش در وضعیت PENDING\n-
+    POST /api/payments/{order_id}/start/ → startpay_url زرین‌پال\n- GET /api/payments/verify/?Authority=...&Status=OK
+    → تایید پرداخت (ایدمپوتنت)\n\n5) مدیریت (staff)\n- /api/admin/users/ ، /api/admin/categories/
+    ، /api/orders/ ، /api/payments/\n\nوضعیت سفارش: PENDING → PAID یا PENDING → CANCELLED
+    (لغو، موجودی را فقط یک‌بار برمی‌گرداند).\nوضعیت آیتم سفارش: PENDING → SHIPPED
+    → DELIVERED یا PENDING → CANCELLED.\nهمه لیست‌ها صفحه‌بندی دارند: ?page=2&page_size=50\n
+    \   "
   termsOfService: https://example.com/terms
   contact:
     name: Support
@@ -1717,7 +1716,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductDetail'
           description: ''
     put:
       operationId: catalog_products_update
@@ -4154,7 +4153,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductDetail'
           description: ''
   /api/products/{id}/review_create/:
     post:
@@ -5175,6 +5174,7 @@ paths:
           - hi
           - hr
           - hsb
+          - ht
           - hu
           - hy
           - ia
@@ -5313,6 +5313,7 @@ paths:
           - hi
           - hr
           - hsb
+          - ht
           - hu
           - hy
           - ia
@@ -7050,7 +7051,8 @@ components:
         Product with category, gallery, live stock, best offer and rating.
 
         ``stock`` is the sum of the stock of every active store item for this
-        product, ``best_price`` the cheapest in-stock offer (null when nobody sells it).
+        product, ``best_price`` the cheapest in-stock offer after discounts (null
+        when nobody sells it).
       properties:
         category:
           type: string
@@ -7178,13 +7180,19 @@ components:
           type: string
           maxLength: 20
         email:
-          type: string
-          format: email
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         website:
-          type: string
-          format: uri
-          maxLength: 200
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 200
+          - type: string
+            maxLength: 0
         is_active:
           type: boolean
     PatchedStoreReviewRequest:
@@ -7292,7 +7300,8 @@ components:
         Product with category, gallery, live stock, best offer and rating.
 
         ``stock`` is the sum of the stock of every active store item for this
-        product, ``best_price`` the cheapest in-stock offer (null when nobody sells it).
+        product, ``best_price`` the cheapest in-stock offer after discounts (null
+        when nobody sells it).
       properties:
         id:
           type: string
@@ -7368,6 +7377,97 @@ components:
       - id
       - images
       - name
+      - price
+      - rating
+      - reviews_count
+      - slug
+      - stock
+      - title
+      - updated_at
+    ProductDetail:
+      type: object
+      description: Product plus every in-stock store offer, cheapest first.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        category:
+          type: string
+          format: uuid
+        category_detail:
+          allOf:
+          - $ref: '#/components/schemas/Category'
+          readOnly: true
+        title:
+          type: string
+          maxLength: 180
+        name:
+          type: string
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-\w]+$
+        description:
+          type: string
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        best_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+        stock:
+          type: integer
+          readOnly: true
+          default: 0
+        is_active:
+          type: boolean
+        image:
+          type: string
+          format: uri
+          nullable: true
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductImageNested'
+          readOnly: true
+        rating:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+        reviews_count:
+          type: integer
+          readOnly: true
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        offers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductOffer'
+          readOnly: true
+      required:
+      - best_price
+      - category
+      - category_detail
+      - created_at
+      - id
+      - images
+      - name
+      - offers
       - price
       - rating
       - reviews_count
@@ -7462,13 +7562,58 @@ components:
       required:
       - image
       - product
+    ProductOffer:
+      type: object
+      description: One store's offer for a product (a StoreItem), as shown on the
+        product page.
+      properties:
+        store_item:
+          type: string
+          format: uuid
+          description: Use this id with /api/mycart/add_to_cart/{id}/
+        store:
+          type: string
+          format: uuid
+        store_name:
+          type: string
+        variant:
+          type: string
+          format: uuid
+        variant_name:
+          type: string
+        sku:
+          type: string
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        discount_percent:
+          type: integer
+        final_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        stock:
+          type: integer
+      required:
+      - discount_percent
+      - final_price
+      - price
+      - sku
+      - stock
+      - store
+      - store_item
+      - store_name
+      - variant
+      - variant_name
     ProductRequest:
       type: object
       description: |-
         Product with category, gallery, live stock, best offer and rating.
 
         ``stock`` is the sum of the stock of every active store item for this
-        product, ``best_price`` the cheapest in-stock offer (null when nobody sells it).
+        product, ``best_price`` the cheapest in-stock offer after discounts (null
+        when nobody sells it).
       properties:
         category:
           type: string
@@ -7831,13 +7976,19 @@ components:
           type: string
           maxLength: 20
         email:
-          type: string
-          format: email
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         website:
-          type: string
-          format: uri
-          maxLength: 200
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 200
+          - type: string
+            maxLength: 0
         addresses:
           type: array
           items:
@@ -8050,13 +8201,19 @@ components:
           type: string
           maxLength: 20
         email:
-          type: string
-          format: email
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         website:
-          type: string
-          format: uri
-          maxLength: 200
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 200
+          - type: string
+            maxLength: 0
         is_active:
           type: boolean
       required:

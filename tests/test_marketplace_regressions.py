@@ -1,4 +1,5 @@
 """Regression tests for the marketplace (seller / store / store item) app."""
+
 from decimal import Decimal
 
 import pytest
@@ -47,9 +48,7 @@ def test_store_item_cannot_be_moved_to_another_sellers_store(make_user, make_sto
     my_store = make_store(owner_user=owner)
     other_store = make_store(owner_user=other)
     item = make_store_item(store=my_store)
-    res = _client_for(owner).patch(
-        f"/api/marketplace/items/{item.id}/", {"store": str(other_store.id)}, format="json"
-    )
+    res = _client_for(owner).patch(f"/api/marketplace/items/{item.id}/", {"store": str(other_store.id)}, format="json")
     assert res.status_code == 400
     item.refresh_from_db()
     assert item.store == my_store

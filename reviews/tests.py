@@ -1,8 +1,10 @@
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from catalog.models import Product, Category
-from marketplace.models import Store, Seller
+
+from catalog.models import Category, Product
+from marketplace.models import Seller, Store
+
 
 @pytest.mark.django_db
 def test_product_review_crud_and_uniqueness():
@@ -11,7 +13,8 @@ def test_product_review_crud_and_uniqueness():
     cat = Category.objects.create(name="Cat")
     p = Product.objects.create(title="Phone", category=cat, price=100)
 
-    c = APIClient(); c.force_authenticate(user=u)
+    c = APIClient()
+    c.force_authenticate(user=u)
 
     # create
     res = c.post("/api/reviews/products/", {"product": p.id, "rating": 5, "comment": "great"}, format="json")
@@ -33,6 +36,7 @@ def test_product_review_crud_and_uniqueness():
     assert res_list.status_code == 200
     assert res_list.json()["count"] == 1
 
+
 @pytest.mark.django_db
 def test_store_review_and_filtering():
     User = get_user_model()
@@ -40,7 +44,8 @@ def test_store_review_and_filtering():
     seller = Seller.objects.create(user=u, display_name="S1")
     store = Store.objects.create(owner=seller, name="S1-Shop")
 
-    c = APIClient(); c.force_authenticate(user=u)
+    c = APIClient()
+    c.force_authenticate(user=u)
 
     res = c.post("/api/reviews/stores/", {"store": store.id, "rating": 3, "comment": "ok"}, format="json")
     assert res.status_code == 201

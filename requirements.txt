@@ -1,3 +1,0 @@
-# Kept for backwards compatibility: installs runtime + development dependencies.
-# Production images install requirements/base.txt only.
--r requirements/dev.txt

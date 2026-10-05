@@ -14,6 +14,12 @@ config/staticfiles/
 .claude/
 graphify-out/
 
+# --- Kept out of the repo for now ---
+# Course brief (Persian PDF) and the frontend, which will be added later
+/*.pdf
+frontend/
+frontend.zip
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -199,9 +205,9 @@ cython_debug/
 .abstra/
 
 # Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+#  and can be added to the global gitignore or merged into this file. However, if you prefer,
 #  you could uncomment the following to ignore the entire vscode folder
 # .vscode/
 
@@ -231,5 +237,3 @@ __marimo__/
 # */migrations/
 
 temp_file.txt
-static/icons/*.tsx
-static/icons/

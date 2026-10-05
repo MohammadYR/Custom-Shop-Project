@@ -14,21 +14,21 @@ from .permissions import IsOwner
 from .serializers import (
     AddressCreateUpdateSerializer,
     AddressSerializer,
+    AdminUserSerializer,
     ChangePasswordSerializer,
     LoginCoreSerializer,
     LoginRequestSerializer,
     LoginResponseSerializer,
+    MyUserSerializer,
     OTPRequestResponseSerializer,
     OTPRequestSerializer,
     OTPVerifyResponseSerializer,
     OTPVerifySerializer,
-    AdminUserSerializer,
-    MyUserSerializer,
     RegisterAsSellerSerializer,
     RegisterSerializer,
     UserMeSerializer,
 )
-from .services import OTPError, normalize_target, request_otp, verify_otp
+from .services import normalize_target, request_otp, verify_otp
 
 
 @extend_schema(
@@ -216,10 +216,7 @@ class OTPVerifyView(generics.GenericAPIView):
         target = normalize_target(ser.validated_data["target"])
         purpose = ser.validated_data["purpose"]
 
-        try:
-            verify_otp(target=target, code=ser.validated_data["code"], purpose=purpose)
-        except OTPError as exc:
-            return response.Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        verify_otp(target=target, code=ser.validated_data["code"], purpose=purpose)
 
         if purpose != "login":
             return response.Response({"message": "OTP تایید شد"}, status=status.HTTP_200_OK)

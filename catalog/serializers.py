@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .models import Category, Product, ProductImage, ProductVariant
@@ -35,27 +36,72 @@ class ProductSerializer(serializers.ModelSerializer):
     """Product with category, gallery, live stock, best offer and rating.
 
     ``stock`` is the sum of the stock of every active store item for this
-    product, ``best_price`` the cheapest in-stock offer (null when nobody sells it).
+    product, ``best_price`` the cheapest in-stock offer after discounts (null
+    when nobody sells it).
     """
 
     category_detail = CategorySerializer(source="category", read_only=True)
     name = serializers.CharField(source="title", read_only=True)
     images = ProductImageNestedSerializer(many=True, read_only=True)
     stock = serializers.IntegerField(source="total_stock", read_only=True, default=0)
-    best_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, allow_null=True, default=None)
+    best_price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True, allow_null=True, default=None
+    )
     rating = serializers.DecimalField(max_digits=3, decimal_places=2, read_only=True, allow_null=True, default=None)
     reviews_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = Product
         fields = [
-            "id", "category", "category_detail",
-            "title", "name", "slug", "description",
-            "price", "best_price", "stock", "is_active", "image", "images",
-            "rating", "reviews_count",
-            "created_at", "updated_at",
+            "id",
+            "category",
+            "category_detail",
+            "title",
+            "name",
+            "slug",
+            "description",
+            "price",
+            "best_price",
+            "stock",
+            "is_active",
+            "image",
+            "images",
+            "rating",
+            "reviews_count",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["id", "slug", "created_at", "updated_at"]
+
+
+class ProductOfferSerializer(serializers.Serializer):
+    """One store's offer for a product (a StoreItem), as shown on the product page."""
+
+    store_item = serializers.UUIDField(source="id", help_text="Use this id with /api/mycart/add_to_cart/{id}/")
+    store = serializers.UUIDField(source="store_id")
+    store_name = serializers.CharField(source="store.name")
+    variant = serializers.UUIDField(source="variant_id")
+    variant_name = serializers.CharField(source="variant.name")
+    sku = serializers.CharField()
+    price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    discount_percent = serializers.IntegerField()
+    final_price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    stock = serializers.IntegerField()
+
+
+class ProductDetailSerializer(ProductSerializer):
+    """Product plus every in-stock store offer, cheapest first."""
+
+    offers = serializers.SerializerMethodField()
+
+    class Meta(ProductSerializer.Meta):
+        fields = [*ProductSerializer.Meta.fields, "offers"]
+
+    @extend_schema_field(ProductOfferSerializer(many=True))
+    def get_offers(self, obj):
+        from .selectors import product_offers
+
+        return ProductOfferSerializer(product_offers(obj), many=True).data
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):

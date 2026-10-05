@@ -1,4 +1,5 @@
 """Seller area /api/mystore/ (spec: tests required for the seller/store app)."""
+
 from decimal import Decimal
 
 import pytest
@@ -40,8 +41,9 @@ def test_non_seller_is_forbidden(auth_client):
 def test_create_view_and_update_my_store(seller_user):
     client = _client(seller_user)
     assert client.get("/api/mystore/").status_code == 404
-    res = client.post("/api/mystore/", {"name": "Lamp House", "description": "lights", "phone_number": "021"},
-                      format="json")
+    res = client.post(
+        "/api/mystore/", {"name": "Lamp House", "description": "lights", "phone_number": "021"}, format="json"
+    )
     assert res.status_code == 201
     assert client.post("/api/mystore/", {"name": "Second"}, format="json").status_code == 400
     res = client.patch("/api/mystore/", {"description": "more lights", "owner": 999}, format="json")
@@ -53,8 +55,11 @@ def test_create_view_and_update_my_store(seller_user):
 def test_store_addresses(seller_user, make_store):
     store = make_store(owner_user=seller_user)
     client = _client(seller_user)
-    res = client.post("/api/mystore/addresses/", {"line1": "Bazaar", "city": "Isfahan", "postal_code": "8",
-                                                   "is_primary": True}, format="json")
+    res = client.post(
+        "/api/mystore/addresses/",
+        {"line1": "Bazaar", "city": "Isfahan", "postal_code": "8", "is_primary": True},
+        format="json",
+    )
     assert res.status_code == 201
     assert client.get("/api/mystore/").data["addresses"][0]["city"] == "Isfahan"
     assert store.addresses.count() == 1
@@ -113,4 +118,6 @@ def test_seller_changes_item_status(seller_user, sold):
     assert client.patch(url, {"status": "DELIVERED"}, format="json").data["status"] == OrderItemStatus.DELIVERED
     assert client.patch(url, {"status": "PENDING"}, format="json").status_code == 400
     # Other sellers' lines are not reachable.
-    assert client.patch(f"/api/mystore/order-items/{other.id}/", {"status": "SHIPPED"}, format="json").status_code == 404
+    assert (
+        client.patch(f"/api/mystore/order-items/{other.id}/", {"status": "SHIPPED"}, format="json").status_code == 404
+    )

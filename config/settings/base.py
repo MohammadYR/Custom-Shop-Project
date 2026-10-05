@@ -5,6 +5,7 @@ All secrets and deployment-specific values are read from environment
 variables. For local development put them in a git-ignored ``.env`` file at
 the repository root (see ``.env.example``).
 """
+
 from datetime import timedelta
 from pathlib import Path
 
@@ -51,7 +52,6 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "django_filters",
-    "django_extensions",
     "core",
     "accounts.apps.AccountsConfig",
     "marketplace",
@@ -101,18 +101,29 @@ CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", True)
 
 
 # ---------------------------------------------------------------------------
-# Database (SQLite by default, PostgreSQL via env)
+# Database: PostgreSQL
 # ---------------------------------------------------------------------------
-DATABASES = {
-    "default": {
-        "ENGINE": env_str("DB_ENGINE", "django.db.backends.sqlite3"),
-        "NAME": env_str("DB_NAME", str(BASE_DIR / "db.sqlite3")),
-        "USER": env_str("DB_USER", ""),
-        "PASSWORD": env_str("DB_PASSWORD", ""),
-        "HOST": env_str("DB_HOST", ""),
-        "PORT": env_str("DB_PORT", ""),
+# Locally, `docker compose up -d db` starts a matching PostgreSQL server.
+# DB_ENGINE=django.db.backends.sqlite3 is still accepted for a quick try-out.
+DB_ENGINE = env_str("DB_ENGINE", "django.db.backends.postgresql")
+
+if DB_ENGINE == "django.db.backends.sqlite3":
+    # DB_NAME is the PostgreSQL database name; SQLite always uses db.sqlite3.
+    DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": BASE_DIR / "db.sqlite3"}}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": env_str("DB_NAME", "shopdb"),
+            "USER": env_str("DB_USER", "shopuser"),
+            "PASSWORD": env_str("DB_PASSWORD", ""),
+            "HOST": env_str("DB_HOST", "127.0.0.1"),
+            "PORT": env_str("DB_PORT", "5432"),
+            # Persistent connections with a health check before reuse.
+            "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
+            "CONN_HEALTH_CHECKS": True,
+        }
     }
-}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
@@ -170,7 +181,9 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = env_str("CELERY_TIMEZONE", TIME_ZONE)
 CELERY_TASK_ALWAYS_EAGER = env_bool("CELERY_TASK_ALWAYS_EAGER", False)
-CELERY_TASK_EAGER_PROPAGATES = True
+# Outside the test suite an eager task error is logged, like in a real worker,
+# instead of breaking the HTTP request that queued it.
+CELERY_TASK_EAGER_PROPAGATES = env_bool("CELERY_TASK_EAGER_PROPAGATES", False)
 CELERY_BEAT_SCHEDULE = {
     "prune-expired-otps-hourly": {
         "task": "accounts.tasks.prune_expired_otps_task",
@@ -196,13 +209,10 @@ KAVENEGAR_SENDER = env_str("KAVENEGAR_SENDER", "")
 # Django REST framework / JWT / OpenAPI
 # ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "core.pagination.DefaultPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_FILTER_BACKENDS": (
@@ -325,7 +335,6 @@ SPECTACULAR_SETTINGS = {
     },
     "POSTPROCESSING_HOOKS": [
         "drf_spectacular.hooks.postprocess_schema_enums",
-
     ],
 }
 
@@ -333,13 +342,30 @@ SPECTACULAR_SETTINGS = {
 # ---------------------------------------------------------------------------
 # Email (credentials come only from the environment)
 # ---------------------------------------------------------------------------
-EMAIL_BACKEND = env_str("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
-EMAIL_HOST = env_str("EMAIL_HOST", "smtp.gmail.com")
-EMAIL_PORT = env_int("EMAIL_PORT", 587)
-EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
-EMAIL_HOST_USER = env_str("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = env_str("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = env_str("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@localhost")
+SMTP_EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+
+def build_mailers(backend: str) -> dict:
+    """Return the Django 6.1+ ``MAILERS`` setting for the given backend.
+
+    Connection options are only valid for the SMTP backend; the console and
+    locmem backends reject unknown options.
+    """
+    mailer: dict = {"BACKEND": backend}
+    if backend == SMTP_EMAIL_BACKEND:
+        mailer["OPTIONS"] = {
+            "host": env_str("EMAIL_HOST", "smtp.gmail.com"),
+            "port": env_int("EMAIL_PORT", 587),
+            "use_tls": env_bool("EMAIL_USE_TLS", True),
+            "username": env_str("EMAIL_HOST_USER", ""),
+            "password": env_str("EMAIL_HOST_PASSWORD", ""),
+            "timeout": env_int("EMAIL_TIMEOUT", 10),
+        }
+    return {"default": mailer}
+
+
+MAILERS = build_mailers(env_str("EMAIL_BACKEND", SMTP_EMAIL_BACKEND))
+DEFAULT_FROM_EMAIL = env_str("DEFAULT_FROM_EMAIL", env_str("EMAIL_HOST_USER") or "noreply@localhost")
 
 
 # ---------------------------------------------------------------------------

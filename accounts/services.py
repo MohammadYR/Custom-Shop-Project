@@ -1,4 +1,5 @@
 """Business logic for accounts (OTP issuing and verification)."""
+
 from __future__ import annotations
 
 import secrets
@@ -10,12 +11,16 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
+from core.exceptions import DomainError
+
 from .models import OTP
 from .tasks import send_otp_email_task, send_otp_sms_task
 
 
-class OTPError(Exception):
+class OTPError(DomainError):
     """Raised when an OTP cannot be verified."""
+
+    default_code = "invalid_otp"
 
 
 @dataclass(frozen=True)
@@ -31,7 +36,7 @@ def normalize_target(target: str) -> str:
 
 def generate_otp_code(length: int = 6) -> str:
     """Cryptographically secure numeric code (``random`` is predictable)."""
-    return f"{secrets.randbelow(10 ** length):0{length}d}"
+    return f"{secrets.randbelow(10**length):0{length}d}"
 
 
 def request_otp(*, target: str, purpose: str) -> IssuedOTP:
