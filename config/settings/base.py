@@ -181,7 +181,9 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = env_str("CELERY_TIMEZONE", TIME_ZONE)
 CELERY_TASK_ALWAYS_EAGER = env_bool("CELERY_TASK_ALWAYS_EAGER", False)
-CELERY_TASK_EAGER_PROPAGATES = True
+# Outside the test suite an eager task error is logged, like in a real worker,
+# instead of breaking the HTTP request that queued it.
+CELERY_TASK_EAGER_PROPAGATES = env_bool("CELERY_TASK_EAGER_PROPAGATES", False)
 CELERY_BEAT_SCHEDULE = {
     "prune-expired-otps-hourly": {
         "task": "accounts.tasks.prune_expired_otps_task",
