@@ -1,4 +1,5 @@
 """Minimal Zarinpal v4 client. All URLs and credentials come from settings."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

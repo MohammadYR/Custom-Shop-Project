@@ -22,7 +22,7 @@ class ReviewActionsMixin:
     @action(detail=True, methods=["post"], url_path="review_create", permission_classes=[IsAuthenticated])
     def review_create(self, request, pk=None):
         target = self.get_object()
-        data = {key: value for key, value in request.data.items()}
+        data = dict(request.data.items())
         data[self.review_target_field] = str(target.pk)
         ser = self.review_serializer_class(data=data, context=self.get_serializer_context())
         ser.is_valid(raise_exception=True)

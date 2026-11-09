@@ -10,6 +10,7 @@ def log_transaction_task(order_id: str, ref_id: str, payload: dict, status: str 
     Safe if Payment is not yet present (no-op then). Caller can retry later.
     """
     from sales.models import Order
+
     from .models import Payment, Transaction
 
     try:
@@ -28,4 +29,3 @@ def log_transaction_task(order_id: str, ref_id: str, payload: dict, status: str 
         raw_payload=payload or {},
         status=status or "VERIFIED",
     )
-

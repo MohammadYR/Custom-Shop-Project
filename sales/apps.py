@@ -7,4 +7,4 @@ class SalesConfig(AppConfig):
 
     def ready(self):
         # Import errors must surface instead of silently disabling the signal handlers.
-        from . import signals  # noqa: F401
+        from . import signals  # noqa: F401  (registers the signal receivers)

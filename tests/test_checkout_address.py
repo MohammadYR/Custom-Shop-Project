@@ -1,4 +1,5 @@
 """Checkout snapshots a shipping address (spec: every order has an address)."""
+
 import pytest
 from rest_framework.test import APIClient
 

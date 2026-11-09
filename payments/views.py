@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import uuid
 
@@ -23,9 +24,7 @@ logger = logging.getLogger(__name__)
 
 @extend_schema(
     tags=["Payments"],
-    parameters=[
-        OpenApiParameter("order_id", OpenApiTypes.UUID, OpenApiParameter.PATH, description="Order to pay for")
-    ],
+    parameters=[OpenApiParameter("order_id", OpenApiTypes.UUID, OpenApiParameter.PATH, description="Order to pay for")],
     request=None,
     responses={
         200: StartPayResponseSerializer,
@@ -79,14 +78,28 @@ class LegacyStartPayView(StartPayView):
 @extend_schema(
     tags=["Payments"],
     parameters=[
-        OpenApiParameter("Authority", OpenApiTypes.STR, OpenApiParameter.QUERY, required=True,
-                         description="Payment authority code from the gateway"),
-        OpenApiParameter("Status", OpenApiTypes.STR, OpenApiParameter.QUERY, required=True,
-                         description="Callback status from the gateway (OK or NOK)",
-                         examples=[OpenApiExample("OK", value="OK")]),
+        OpenApiParameter(
+            "Authority",
+            OpenApiTypes.STR,
+            OpenApiParameter.QUERY,
+            required=True,
+            description="Payment authority code from the gateway",
+        ),
+        OpenApiParameter(
+            "Status",
+            OpenApiTypes.STR,
+            OpenApiParameter.QUERY,
+            required=True,
+            description="Callback status from the gateway (OK or NOK)",
+            examples=[OpenApiExample("OK", value="OK")],
+        ),
     ],
-    responses={200: VerifyResponseSerializer, 400: VerifyResponseSerializer, 404: OpenApiResponse(),
-               502: OpenApiResponse(description="Gateway unreachable")},
+    responses={
+        200: VerifyResponseSerializer,
+        400: VerifyResponseSerializer,
+        404: OpenApiResponse(),
+        502: OpenApiResponse(description="Gateway unreachable"),
+    },
     description=(
         "Gateway callback. Verifies the payment and moves the order PENDING -> PAID "
         "(or PENDING -> CANCELLED when Status != OK). Idempotent: calling it again for "
@@ -114,10 +127,8 @@ class VerifyView(APIView):
             return Response({"status": "canceled"})
 
         if status_str != "OK":
-            try:
+            with contextlib.suppress(InvalidOrderTransition):
                 cancel_order(order)
-            except InvalidOrderTransition:
-                pass
             return Response({"status": "canceled"})
 
         try:
@@ -136,8 +147,9 @@ class VerifyView(APIView):
         except InvalidOrderTransition:
             order.refresh_from_db()
             if order.status != OrderStatus.PAID:
-                return Response({"status": "failed", "detail": "Order is no longer payable."},
-                                status=status.HTTP_409_CONFLICT)
+                return Response(
+                    {"status": "failed", "detail": "Order is no longer payable."}, status=status.HTTP_409_CONFLICT
+                )
             return Response({"status": "success", "ref_id": order.payment_ref_id or ""})
 
         order_id, ref_id, payload = str(order.id), result.ref_id or "", result.payload

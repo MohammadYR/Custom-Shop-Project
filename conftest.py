@@ -3,6 +3,7 @@
 Celery runs eagerly (see config/settings/test.py), so ``.delay()`` executes
 the task inline and no broker is needed.
 """
+
 import itertools
 from decimal import Decimal
 
@@ -40,8 +41,9 @@ def make_user(db):
         extra.setdefault("email", f"{username}@example.com")
         user = User.objects.create_user(username=username, password=password, **extra)
         if with_address:  # checkout needs a shipping address
-            Address.objects.create(user=user, line1=f"Street {n}", city="Tehran", postal_code="1234567890",
-                                   is_default=True)
+            Address.objects.create(
+                user=user, line1=f"Street {n}", city="Tehran", postal_code="1234567890", is_default=True
+            )
         return user
 
     return _make
@@ -77,9 +79,7 @@ def make_store(make_user):
 
     def _make(owner_user=None, name=None, **extra):
         owner_user = owner_user or make_user()
-        seller, _ = Seller.objects.get_or_create(
-            user=owner_user, defaults={"display_name": owner_user.username}
-        )
+        seller, _ = Seller.objects.get_or_create(user=owner_user, defaults={"display_name": owner_user.username})
         return Store.objects.create(owner=seller, name=name or f"Store {next(_counter)}", **extra)
 
     return _make
@@ -96,8 +96,6 @@ def make_store_item(db, make_store):
         category, _ = Category.objects.get_or_create(name="Default Category")
         product = Product.objects.create(category=category, title=f"Product {n}", price=price)
         variant = ProductVariant.objects.create(product=product, name="Default")
-        return StoreItem.objects.create(
-            store=store, variant=variant, sku=f"SKU-{n}", price=price, stock=stock, **extra
-        )
+        return StoreItem.objects.create(store=store, variant=variant, sku=f"SKU-{n}", price=price, stock=stock, **extra)
 
     return _make

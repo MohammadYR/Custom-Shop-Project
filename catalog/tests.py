@@ -1,5 +1,7 @@
 import pytest
+from django.db import IntegrityError
 from django.utils.text import slugify
+
 from catalog.models import Category, Product, ProductVariant
 
 
@@ -29,6 +31,6 @@ def test_product_and_variant_creation_and_unique():
     cat = Category.objects.create(name="Audio")
     p = Product.objects.create(category=cat, title="Headset", slug="headset", price=100)
     ProductVariant.objects.create(product=p, name="Default")
-    with pytest.raises(Exception):
+    with pytest.raises(IntegrityError):
         # Duplicate variant name for same product
         ProductVariant.objects.create(product=p, name="Default")

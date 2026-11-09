@@ -1,7 +1,7 @@
 import pytest
-from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+
 
 @pytest.mark.django_db
 def test_register_as_seller_sets_flag_and_optionally_creates_store():
@@ -12,7 +12,7 @@ def test_register_as_seller_sets_flag_and_optionally_creates_store():
     client.force_authenticate(user=u)
 
     url = "/api/accounts/me/register_as_seller/"
-    payload = {"display_name":"Owner", "store":{"name":"My Great Shop"}}
+    payload = {"display_name": "Owner", "store": {"name": "My Great Shop"}}
     res = client.post(url, payload, format="json")
     assert res.status_code == 201
 

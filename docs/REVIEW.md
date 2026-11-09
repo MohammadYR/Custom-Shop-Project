@@ -1,5 +1,7 @@
 # Code review: problems found and fixes
 
+> Historical record of the security review in v1.1.0 (PR #13). Paths and steps below describe the project at that time; see the [changelog](../CHANGELOG.md) for what changed since.
+
 ## خلاصه فارسی
 
 این سند فهرست مشکلات امنیتی و منطقی پیدا شده در شاخه `main` و نحوه رفع هر کدام است (PR شماره ۱، شاخه `fix/security-and-logic`).
@@ -13,7 +15,7 @@ Every item was reproduced on `main` before fixing. The regression test that cove
 ## Security
 
 | # | Problem | Fix | Test |
-|---|---------|-----|------|
+| --- | --- | --- | --- |
 | 1 | `OrderViewSet` was a `ModelViewSet` with a writable `status`: `PATCH /api/sales/orders/{id}/ {"status":"PAID"}` returned 200 and the payment became `VERIFIED`. | `ReadOnlyModelViewSet` + `POST /orders/{id}/cancel/` (PENDING only, through the state machine). All order fields are read-only. | `tests/test_sales_api_regressions.py::test_buyer_cannot_mark_own_order_paid` |
 | 2 | `OrderItemViewSet` let buyers edit `unit_price`, `quantity`, `order` (a 100 order became 0.50). | Read-only; items are created only by checkout. | `test_buyer_cannot_edit_order_items` |
 | 3 | Catalog viewsets used `AllowAny` on `ModelViewSet`s: anonymous users could create/edit/delete categories and products. | `core.permissions.IsAdminOrReadOnly` (read: everyone, write: staff). | `tests/test_catalog_api.py::test_anonymous_cannot_write_catalog`, `test_regular_user_cannot_write_catalog` |
@@ -27,7 +29,7 @@ Other settings problems fixed at the same time: `BASE_DIR` pointed to `config/` 
 ## Logic bugs
 
 | # | Problem | Fix | Test |
-|---|---------|-----|------|
+| --- | --- | --- | --- |
 | 8 | `restock_on_order_cancel` (pre_save) restocked on every transition into CANCELLED: CANCELLED→PENDING→CANCELLED raised stock 10→14. Admin actions used `queryset.update()` and skipped every side effect. | State machine in `sales/services.py` (`PENDING→PAID`, `PENDING→CANCELLED` only). `cancel_order` restocks with `F()` inside `transaction.atomic` under a row lock; `mark_order_paid` sets `paid_at`, verifies the payment and queues emails on commit. Used by the API, payment verify and admin actions. Signal removed. | `tests/test_order_state_machine.py`, `tests/test_sales_admin.py` |
 | 9 | `create_order_from_cart` had no locking (overselling) and accepted an empty cart. | Moved to `sales.services`; `select_for_update` on the store items (pk order), conditional `F()` decrement, `bulk_create`, empty cart rejected, everything rolls back on error. | `tests/test_checkout_regressions.py` |
 | 10 | Soft delete vs. unique constraints: `cart.items.all().delete()` only soft-deleted, so re-adding the item after checkout raised `IntegrityError` (500). Same for Cart, default Address, `Category.name`, `Store.name`, `StoreItem.sku`, variants and reviews. | Unique constraints now have `condition=Q(deleted_at__isnull=True)`; cart lines are hard-deleted; `get_or_create_cart` restores a soft-deleted cart. Migrations added. | `test_same_item_can_be_added_again_after_checkout`, `test_*_after_soft_delete` |
@@ -54,6 +56,6 @@ Other settings problems fixed at the same time: `BASE_DIR` pointed to `config/` 
 
 1. **Revoke the Gmail app password** that was committed in `config/settings/base.py`, and revoke the SMS (Kavenegar) API key that was in a comment there. Removing them from the code does not remove them from git history.
 2. **Rotate `SECRET_KEY`**: the old key is public; set a new `DJANGO_SECRET_KEY` in every environment.
-3. Make the repository **Private** (the course requires it; it is currently public).
+3. ~~Make the repository Private~~ (it was private during the course; it is public now on purpose, as a portfolio project).
 4. Reconcile the diverged `dev` branch (its reviews migrations and `static/js/admin.js` were ported here; `core/aliases.py` was intentionally not copied).
 5. Local SQLite databases moved from `config/db.sqlite3` to `./db.sqlite3` and media from `config/media/` to `./media/` (BASE_DIR fix). Move the files if you want to keep local data.

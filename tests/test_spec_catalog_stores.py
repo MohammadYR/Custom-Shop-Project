@@ -1,4 +1,5 @@
 """Spec paths: /api/categories/, /api/admin/categories/, /api/products/, /api/stores/, review_create."""
+
 import pytest
 
 from catalog.models import Category, Product

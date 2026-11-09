@@ -2,6 +2,7 @@
 
 The older /api/<app>/... paths (config/urls.py) keep working for compatibility.
 """
+
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 

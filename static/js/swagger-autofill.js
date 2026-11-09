@@ -70,4 +70,3 @@ window.SwaggerAutofill = (function(){
 
   return { onRequest, onReady };
 })();
-

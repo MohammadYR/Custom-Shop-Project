@@ -1,4 +1,5 @@
 """Product listing: search, filters, ordering, stock / best price, images."""
+
 import io
 from decimal import Decimal
 
@@ -23,7 +24,9 @@ def catalog(make_store):
     p3 = Product.objects.create(category=books, title="Django Book", description="python web", price=Decimal("30"))
     s1, s2 = make_store(), make_store()
     for product, store, price, stock, sku in [
-        (p1, s1, "480", 3, "A"), (p1, s2, "470", 2, "B"), (p2, s1, "880", 0, "C"),
+        (p1, s1, "480", 3, "A"),
+        (p1, s2, "470", 2, "B"),
+        (p2, s1, "880", 0, "C"),
     ]:
         variant, _ = ProductVariant.objects.get_or_create(product=product, name="Default")
         StoreItem.objects.create(store=store, variant=variant, sku=sku, price=Decimal(price), stock=stock)

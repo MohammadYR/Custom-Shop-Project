@@ -1,4 +1,5 @@
 """Signal handlers must actually be connected (apps.ready() used to swallow import errors)."""
+
 import pytest
 
 from sales.models import Cart
@@ -11,7 +12,9 @@ def test_cart_created_for_new_user(make_user):
     assert Cart.objects.filter(user=make_user()).exists()
 
 
-def test_low_stock_alert_on_manual_stock_change(make_store_item, django_capture_on_commit_callbacks, mailoutbox, settings):
+def test_low_stock_alert_on_manual_stock_change(
+    make_store_item, django_capture_on_commit_callbacks, mailoutbox, settings
+):
     settings.INVENTORY_LOW_STOCK_THRESHOLD = 3
     item = make_store_item(stock=10)
     with django_capture_on_commit_callbacks(execute=True):

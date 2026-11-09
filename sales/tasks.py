@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from smtplib import SMTPException
+
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import EmailMessage
 
 
-@shared_task
+@shared_task(autoretry_for=(SMTPException, OSError), retry_backoff=True, max_retries=3)
 def send_order_paid_email_task(order_id: str):
     from .models import Order
+
     try:
         order = Order.objects.select_related("user").get(pk=order_id)
     except Order.DoesNotExist:
@@ -24,15 +27,13 @@ def send_order_paid_email_task(order_id: str):
         f"Thanks for shopping with us!"
     )
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
-    try:
-        EmailMessage(subject, body, from_email, [to_email]).send()
-    except Exception:
-        pass
+    EmailMessage(subject, body, from_email, [to_email]).send()
 
 
-@shared_task
+@shared_task(autoretry_for=(SMTPException, OSError), retry_backoff=True, max_retries=3)
 def send_order_cancelled_email_task(order_id: str):
     from .models import Order
+
     try:
         order = Order.objects.select_related("user").get(pk=order_id)
     except Order.DoesNotExist:
@@ -43,22 +44,19 @@ def send_order_cancelled_email_task(order_id: str):
         return
     subject = f"Your order {order.id} was cancelled"
     body = (
-        f"Hi {order.user.username},\n\n"
-        f"Your order has been cancelled. If this was a mistake, please contact support.\n"
+        f"Hi {order.user.username},\n\nYour order has been cancelled. If this was a mistake, please contact support.\n"
     )
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
-    try:
-        EmailMessage(subject, body, from_email, [to_email]).send()
-    except Exception:
-        pass
+    EmailMessage(subject, body, from_email, [to_email]).send()
 
 
-@shared_task
+@shared_task(autoretry_for=(SMTPException, OSError), retry_backoff=True, max_retries=3)
 def notify_sellers_order_paid_task(order_id: str):
     """
     Notify each seller whose items were included in the paid order.
     """
     from .models import Order
+
     try:
         order = Order.objects.get(pk=order_id)
     except Order.DoesNotExist:
@@ -66,7 +64,9 @@ def notify_sellers_order_paid_task(order_id: str):
 
     # Collect unique seller emails
     seller_emails: set[str] = set()
-    for item in order.items.select_related("store_item", "store_item__store", "store_item__store__owner", "store_item__store__owner__user"):
+    for item in order.items.select_related(
+        "store_item", "store_item__store", "store_item__store__owner", "store_item__store__owner__user"
+    ):
         owner_user = getattr(item.store_item.store.owner, "user", None)
         email = getattr(owner_user, "email", None)
         if email:
@@ -82,8 +82,4 @@ def notify_sellers_order_paid_task(order_id: str):
         f"Items count: {order.total_items}\nTotal: {order.total_price}\n"
     )
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None)
-    try:
-        EmailMessage(subject, body, from_email, list(seller_emails)).send()
-    except Exception:
-        pass
-
+    EmailMessage(subject, body, from_email, list(seller_emails)).send()

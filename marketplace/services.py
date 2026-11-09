@@ -1,4 +1,5 @@
 """Business logic for sellers and stores."""
+
 from __future__ import annotations
 
 from django.db import transaction

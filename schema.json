@@ -2796,7 +2796,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Product"
+                                    "$ref": "#/components/schemas/ProductDetail"
                                 }
                             }
                         },
@@ -6802,7 +6802,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Product"
+                                    "$ref": "#/components/schemas/ProductDetail"
                                 }
                             }
                         },
@@ -8410,6 +8410,7 @@
                                 "hi",
                                 "hr",
                                 "hsb",
+                                "ht",
                                 "hu",
                                 "hy",
                                 "ia",
@@ -8566,6 +8567,7 @@
                                 "hi",
                                 "hr",
                                 "hsb",
+                                "ht",
                                 "hu",
                                 "hy",
                                 "ia",
@@ -10882,7 +10884,7 @@
             },
             "PatchedProductRequest": {
                 "type": "object",
-                "description": "Product with category, gallery, live stock, best offer and rating.\n\n``stock`` is the sum of the stock of every active store item for this\nproduct, ``best_price`` the cheapest in-stock offer (null when nobody sells it).",
+                "description": "Product with category, gallery, live stock, best offer and rating.\n\n``stock`` is the sum of the stock of every active store item for this\nproduct, ``best_price`` the cheapest in-stock offer after discounts (null\nwhen nobody sells it).",
                 "properties": {
                     "category": {
                         "type": "string",
@@ -11053,14 +11055,30 @@
                         "maxLength": 20
                     },
                     "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 254
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "email",
+                                "maxLength": 254
+                            },
+                            {
+                                "type": "string",
+                                "maxLength": 0
+                            }
+                        ]
                     },
                     "website": {
-                        "type": "string",
-                        "format": "uri",
-                        "maxLength": 200
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "uri",
+                                "maxLength": 200
+                            },
+                            {
+                                "type": "string",
+                                "maxLength": 0
+                            }
+                        ]
                     },
                     "is_active": {
                         "type": "boolean"
@@ -11191,7 +11209,7 @@
             },
             "Product": {
                 "type": "object",
-                "description": "Product with category, gallery, live stock, best offer and rating.\n\n``stock`` is the sum of the stock of every active store item for this\nproduct, ``best_price`` the cheapest in-stock offer (null when nobody sells it).",
+                "description": "Product with category, gallery, live stock, best offer and rating.\n\n``stock`` is the sum of the stock of every active store item for this\nproduct, ``best_price`` the cheapest in-stock offer after discounts (null\nwhen nobody sells it).",
                 "properties": {
                     "id": {
                         "type": "string",
@@ -11289,6 +11307,123 @@
                     "id",
                     "images",
                     "name",
+                    "price",
+                    "rating",
+                    "reviews_count",
+                    "slug",
+                    "stock",
+                    "title",
+                    "updated_at"
+                ]
+            },
+            "ProductDetail": {
+                "type": "object",
+                "description": "Product plus every in-stock store offer, cheapest first.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "category": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "category_detail": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Category"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "maxLength": 180
+                    },
+                    "name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "slug": {
+                        "type": "string",
+                        "readOnly": true,
+                        "pattern": "^[-\\w]+$"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "price": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,10}(?:\\.\\d{0,2})?$"
+                    },
+                    "best_price": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,10}(?:\\.\\d{0,2})?$",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "stock": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "default": 0
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "image": {
+                        "type": "string",
+                        "format": "uri",
+                        "nullable": true
+                    },
+                    "images": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProductImageNested"
+                        },
+                        "readOnly": true
+                    },
+                    "rating": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,1}(?:\\.\\d{0,2})?$",
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "reviews_count": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "default": 0
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "offers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProductOffer"
+                        },
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "best_price",
+                    "category",
+                    "category_detail",
+                    "created_at",
+                    "id",
+                    "images",
+                    "name",
+                    "offers",
                     "price",
                     "rating",
                     "reviews_count",
@@ -11414,9 +11549,65 @@
                     "product"
                 ]
             },
+            "ProductOffer": {
+                "type": "object",
+                "description": "One store's offer for a product (a StoreItem), as shown on the product page.",
+                "properties": {
+                    "store_item": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Use this id with /api/mycart/add_to_cart/{id}/"
+                    },
+                    "store": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "store_name": {
+                        "type": "string"
+                    },
+                    "variant": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "variant_name": {
+                        "type": "string"
+                    },
+                    "sku": {
+                        "type": "string"
+                    },
+                    "price": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,10}(?:\\.\\d{0,2})?$"
+                    },
+                    "discount_percent": {
+                        "type": "integer"
+                    },
+                    "final_price": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,10}(?:\\.\\d{0,2})?$"
+                    },
+                    "stock": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "discount_percent",
+                    "final_price",
+                    "price",
+                    "sku",
+                    "stock",
+                    "store",
+                    "store_item",
+                    "store_name",
+                    "variant",
+                    "variant_name"
+                ]
+            },
             "ProductRequest": {
                 "type": "object",
-                "description": "Product with category, gallery, live stock, best offer and rating.\n\n``stock`` is the sum of the stock of every active store item for this\nproduct, ``best_price`` the cheapest in-stock offer (null when nobody sells it).",
+                "description": "Product with category, gallery, live stock, best offer and rating.\n\n``stock`` is the sum of the stock of every active store item for this\nproduct, ``best_price`` the cheapest in-stock offer after discounts (null\nwhen nobody sells it).",
                 "properties": {
                     "category": {
                         "type": "string",
@@ -11895,14 +12086,30 @@
                         "maxLength": 20
                     },
                     "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 254
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "email",
+                                "maxLength": 254
+                            },
+                            {
+                                "type": "string",
+                                "maxLength": 0
+                            }
+                        ]
                     },
                     "website": {
-                        "type": "string",
-                        "format": "uri",
-                        "maxLength": 200
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "uri",
+                                "maxLength": 200
+                            },
+                            {
+                                "type": "string",
+                                "maxLength": 0
+                            }
+                        ]
                     },
                     "addresses": {
                         "type": "array",
@@ -12179,14 +12386,30 @@
                         "maxLength": 20
                     },
                     "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 254
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "email",
+                                "maxLength": 254
+                            },
+                            {
+                                "type": "string",
+                                "maxLength": 0
+                            }
+                        ]
                     },
                     "website": {
-                        "type": "string",
-                        "format": "uri",
-                        "maxLength": 200
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "uri",
+                                "maxLength": 200
+                            },
+                            {
+                                "type": "string",
+                                "maxLength": 0
+                            }
+                        ]
                     },
                     "is_active": {
                         "type": "boolean"

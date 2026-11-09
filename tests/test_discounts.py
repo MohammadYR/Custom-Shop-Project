@@ -1,4 +1,5 @@
 """Cart totals and discount (StoreItem.discount_percent)."""
+
 from decimal import Decimal
 
 import pytest

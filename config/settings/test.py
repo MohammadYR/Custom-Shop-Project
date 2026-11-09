@@ -1,18 +1,19 @@
-"""Settings used by the test-suite (pytest.ini points here).
+"""Settings used by the test-suite (pyproject.toml points pytest here).
 
-Tests must not need PostgreSQL, Redis, SMTP or network access.
+Tests run against PostgreSQL, like production, using the DB_* variables
+(Django creates and drops a separate ``test_<DB_NAME>`` database). Start one
+with ``docker compose up -d db``. Set DB_ENGINE=django.db.backends.sqlite3 to
+run against in-memory SQLite instead. Redis, SMTP and network access are never
+needed.
 """
-from .base import *  # noqa: F401,F403
+
+from .base import *
 
 DEBUG = False
 SECRET_KEY = "test-secret-key-not-used-anywhere-else"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
-    }
-}
+if DB_ENGINE == "django.db.backends.sqlite3":
+    DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": ":memory:"}}
 
 CACHES = {
     "default": {
@@ -21,7 +22,7 @@ CACHES = {
 }
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
-EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+MAILERS = {"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}}
 
 # Run Celery tasks synchronously, without a broker.
 CELERY_TASK_ALWAYS_EAGER = True

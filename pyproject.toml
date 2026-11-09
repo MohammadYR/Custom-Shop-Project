@@ -1,0 +1,101 @@
+[project]
+name = "custom-shop"
+version = "2.0.0"
+description = "Multi-vendor e-commerce backend built with Django, DRF, Celery and PostgreSQL."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.14"
+dependencies = [
+    "django>=6.1,<6.2",
+    "djangorestframework>=3.18",
+    "djangorestframework-simplejwt>=5.5",
+    "drf-spectacular>=0.30",
+    "django-cors-headers>=4.9",
+    "django-filter>=26.2",
+    "django-jazzmin>=3.0.5",
+    "celery[redis]>=5.6",
+    "redis>=8.1",
+    "psycopg[binary]>=3.3",
+    "pillow>=12.3",
+    "python-dotenv>=1.2",
+    "requests>=2.34",
+    "kavenegar>=1.1.2",
+    "gunicorn>=26.2",
+    "whitenoise>=6.12",
+]
+
+[dependency-groups]
+dev = [
+    "django-extensions>=4.1",
+    "pytest>=9.1",
+    "pytest-django>=4.14",
+    "pytest-cov>=7.1",
+    "ruff>=0.16",
+    "pre-commit>=4.3",
+]
+
+[tool.uv]
+# This is an application, not a library: never build or publish it.
+package = false
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "--strict-markers"
+filterwarnings = [
+    # WhiteNoise warns that STATIC_ROOT does not exist until collectstatic runs.
+    "ignore:No directory at:UserWarning",
+]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/tests.py",
+    "tests/*",
+    "conftest.py",
+    "manage.py",
+    "config/asgi.py",
+    "config/wsgi.py",
+    "config/settings/prod.py",
+    ".venv/*",
+]
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = true
+fail_under = 85
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "B",        # flake8-bugbear
+    "UP",       # pyupgrade
+    "DJ",       # flake8-django
+    "S",        # flake8-bandit (security)
+    "SIM",      # flake8-simplify
+    "C4",       # flake8-comprehensions
+    "RUF",      # ruff-specific
+]
+ignore = [
+    "RUF012",   # mutable class attributes: Django/DRF Meta and class attrs are idiomatic
+    "RUF001",   # Persian text in strings is intentional, not a look-alike character
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests.py" = ["S101", "S105", "S106", "S107"]
+"**/tests/**" = ["S101", "S105", "S106", "S107"]
+"tests/**" = ["S101", "S105", "S106", "S107"]
+"conftest.py" = ["S101", "S105", "S106", "S107"]
+"config/settings/*.py" = ["F403", "F405"]
+"config/settings/test.py" = ["F403", "F405", "S105"]

@@ -1,4 +1,5 @@
 """Start/verify payment endpoints with the gateway mocked."""
+
 from decimal import Decimal
 from unittest import mock
 

@@ -4,6 +4,7 @@ The settings modules call these helpers instead of hardcoding values, so that
 secrets and deployment-specific configuration live only in the environment
 (or in a local, git-ignored ``.env`` file).
 """
+
 from __future__ import annotations
 
 import os

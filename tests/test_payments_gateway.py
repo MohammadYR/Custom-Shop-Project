@@ -1,4 +1,5 @@
 """Unit tests for payments.gateway (HTTP is always mocked)."""
+
 from decimal import Decimal
 from unittest import mock
 
@@ -30,7 +31,9 @@ def test_client_uses_settings(settings):
     settings.ZARINPAL_MERCHANT_ID = "merchant-x"
     settings.ZARINPAL_REQUEST_URL = "https://gw.test/request.json"
     settings.ZARINPAL_STARTPAY_URL = "https://gw.test/StartPay/"
-    with mock.patch("payments.gateway.requests.post", return_value=FakeResponse(200, {"data": {"code": 100, "authority": "A1"}})) as post:
+    with mock.patch(
+        "payments.gateway.requests.post", return_value=FakeResponse(200, {"data": {"code": 100, "authority": "A1"}})
+    ) as post:
         result = ZarinpalClient().request_payment(amount_rial=1000, description="d")
     assert result.authority == "A1"
     assert result.startpay_url == "https://gw.test/StartPay/A1"
@@ -39,20 +42,28 @@ def test_client_uses_settings(settings):
 
 
 def test_request_rejected_raises():
-    with mock.patch("payments.gateway.requests.post", return_value=FakeResponse(200, {"data": [], "errors": {"code": -9}})):
-        with pytest.raises(ZarinpalError):
-            ZarinpalClient().request_payment(amount_rial=1000, description="d")
+    with (
+        mock.patch(
+            "payments.gateway.requests.post", return_value=FakeResponse(200, {"data": [], "errors": {"code": -9}})
+        ),
+        pytest.raises(ZarinpalError),
+    ):
+        ZarinpalClient().request_payment(amount_rial=1000, description="d")
 
 
 def test_network_error_raises():
-    with mock.patch("payments.gateway.requests.post", side_effect=requests.ConnectionError("boom")):
-        with pytest.raises(ZarinpalError):
-            ZarinpalClient().verify(amount_rial=1000, authority="A")
+    with (
+        mock.patch("payments.gateway.requests.post", side_effect=requests.ConnectionError("boom")),
+        pytest.raises(ZarinpalError),
+    ):
+        ZarinpalClient().verify(amount_rial=1000, authority="A")
 
 
 @pytest.mark.parametrize("code,ok", [(100, True), (101, True), (-51, False)])
 def test_verify_result(code, ok):
-    with mock.patch("payments.gateway.requests.post", return_value=FakeResponse(200, {"data": {"code": code, "ref_id": 7}})):
+    with mock.patch(
+        "payments.gateway.requests.post", return_value=FakeResponse(200, {"data": {"code": code, "ref_id": 7}})
+    ):
         result = ZarinpalClient().verify(amount_rial=1000, authority="A")
     assert result.ok is ok
     assert result.ref_id == "7"

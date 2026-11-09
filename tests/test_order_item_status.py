@@ -1,4 +1,5 @@
 """Order item fulfilment state machine (seller side)."""
+
 import pytest
 from django.test import Client
 from django.urls import reverse

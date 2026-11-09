@@ -1,4 +1,5 @@
 """Regression tests for security and logic bugs in the accounts app."""
+
 from datetime import timedelta
 from unittest import mock
 
@@ -17,6 +18,7 @@ User = get_user_model()
 
 # --- privilege escalation via /me/ ------------------------------------------
 
+
 def test_user_cannot_make_himself_seller_via_me(auth_client, user):
     res = auth_client.patch("/api/accounts/me/", {"is_seller": True, "username": "admin", "id": 999}, format="json")
     assert res.status_code == 200
@@ -33,6 +35,7 @@ def test_me_can_update_email(auth_client, user):
 
 
 # --- username/email normalization before save -------------------------------
+
 
 def test_case_variant_username_is_rejected_with_400(api_client):
     payload = {"username": "Ali", "email": "ali1@example.com", "password": "StrongPass123!"}
@@ -64,6 +67,7 @@ def test_weak_password_rejected(api_client):
 
 # --- throttling ---------------------------------------------------------------
 
+
 def test_register_is_throttled(api_client):
     for i in range(5):
         payload = {"username": f"t{i}", "email": f"t{i}@example.com", "password": "StrongPass123!"}
@@ -82,15 +86,18 @@ def test_otp_verify_is_throttled(api_client):
 
 # --- OTP --------------------------------------------------------------------
 
+
 def test_otp_code_uses_secrets_module():
     with mock.patch("accounts.services.secrets.randbelow", return_value=42) as randbelow:
         assert generate_otp_code() == "000042"
-    randbelow.assert_called_once_with(10 ** 6)
+    randbelow.assert_called_once_with(10**6)
 
 
 def test_otp_is_sent_exactly_once(django_capture_on_commit_callbacks):
-    with mock.patch("accounts.services.send_otp_email_task.delay") as email_delay, \
-            django_capture_on_commit_callbacks(execute=True):
+    with (
+        mock.patch("accounts.services.send_otp_email_task.delay") as email_delay,
+        django_capture_on_commit_callbacks(execute=True),
+    ):
         request_otp(target="someone@example.com", purpose="login")
     assert email_delay.call_count == 1
 
@@ -141,13 +148,18 @@ def test_otp_request_does_not_leak_code_when_debug_off(api_client, settings):
 
 
 def test_prune_expired_otps_hard_deletes():
-    OTP.objects.create(target="a@example.com", purpose="login", code="1", expires_at=timezone.now() - timedelta(minutes=1))
-    fresh = OTP.objects.create(target="a@example.com", purpose="login", code="2", expires_at=timezone.now() + timedelta(minutes=5))
+    OTP.objects.create(
+        target="a@example.com", purpose="login", code="1", expires_at=timezone.now() - timedelta(minutes=1)
+    )
+    fresh = OTP.objects.create(
+        target="a@example.com", purpose="login", code="2", expires_at=timezone.now() + timedelta(minutes=5)
+    )
     prune_expired_otps_task()
     assert list(OTP.all_objects.values_list("pk", flat=True)) == [fresh.pk]
 
 
 # --- register as seller -------------------------------------------------------
+
 
 def test_register_as_seller_twice_returns_400_not_500(auth_client, user):
     url = "/api/accounts/me/register_as_seller/"
@@ -158,9 +170,7 @@ def test_register_as_seller_twice_returns_400_not_500(auth_client, user):
 
 def test_register_as_seller_is_atomic(auth_client, user, make_store):
     make_store(name="Taken Name")
-    res = auth_client.post(
-        "/api/accounts/me/register_as_seller/", {"store": {"name": "taken name"}}, format="json"
-    )
+    res = auth_client.post("/api/accounts/me/register_as_seller/", {"store": {"name": "taken name"}}, format="json")
     assert res.status_code == 400
     user.refresh_from_db()
     assert user.is_seller is False
@@ -180,6 +190,7 @@ def test_register_as_seller_creates_store(auth_client, user):
 
 
 # --- default address ----------------------------------------------------------
+
 
 def test_soft_deleted_default_address_does_not_block_new_default(user):
     old = Address.objects.create(user=user, line1="a", city="c", postal_code="1", is_default=True)

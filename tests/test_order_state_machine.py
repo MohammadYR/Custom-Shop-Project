@@ -1,4 +1,5 @@
 """Order state machine: PENDING -> PAID | CANCELLED, nothing else."""
+
 import pytest
 
 from payments.models import Payment

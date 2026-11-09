@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.mail import EmailMessage
 from django.utils import timezone
 
-from .sms import mask_target, send_sms
+from .sms import send_sms
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +16,9 @@ def send_otp_email_task(target_email: str, message: str):
     subject = getattr(settings, "OTP_EMAIL_SUBJECT", "Your Verification Code")
     try:
         EmailMessage(subject, message, settings.DEFAULT_FROM_EMAIL, [target_email]).send()
-        logger.info("OTP email sent to %s", mask_target(target_email))
+        logger.info("OTP email sent")
     except Exception:  # pragma: no cover - depends on SMTP availability
-        logger.exception("Failed to send OTP email to %s", mask_target(target_email))
+        logger.exception("Failed to send an OTP email")
 
 
 @shared_task
